@@ -10,6 +10,10 @@ from app.api.v1.endpoints import (
     receipts,
     attendance,
     reminders,
+    dashboard,
+    reports,
+    imports,
+    exports,
 )
 
 api_router = APIRouter()
@@ -52,4 +56,24 @@ api_router.include_router(
     reminders.router,
     prefix="/reminders",
     tags=["Reminders & Follow-ups"],
+)
+api_router.include_router(
+    dashboard.router,
+    prefix="/dashboard",
+    tags=["Dashboard"],
+)
+api_router.include_router(
+    reports.router,
+    prefix="/reports",
+    tags=["Reports"],
+)
+api_router.include_router(
+    imports.router,
+    prefix="/imports",
+    tags=["Imports"],
+)
+api_router.include_router(
+    exports.router,
+    prefix="/exports",
+    tags=["Exports"],
 )
