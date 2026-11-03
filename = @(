@@ -1,0 +1,54 @@
+.gitignore:82: new blank line at EOF.
+alembic/versions/57b7d7a1cc70_create_initial_tenant_user_schema.py:4: trailing whitespace.
+[32m+[m[32mRevises:[m[41m [m
+alembic/versions/a1b2c3d4e5f6_add_day5_reminders_and_followups.py:105: new blank line at EOF.
+alembic/versions/d2e5a6f7b8c9_harden_constraints_and_composite_fks.py:94: new blank line at EOF.
+app/api/v1/endpoints/attendance.py:400: new blank line at EOF.
+app/api/v1/endpoints/invoices.py:162: new blank line at EOF.
+app/api/v1/endpoints/members.py:140: new blank line at EOF.
+app/api/v1/endpoints/membership_plans.py:104: new blank line at EOF.
+app/api/v1/endpoints/memberships.py:150: new blank line at EOF.
+app/api/v1/endpoints/payments.py:216: new blank line at EOF.
+app/api/v1/endpoints/receipts.py:89: new blank line at EOF.
+app/api/v1/endpoints/reminders.py:342: new blank line at EOF.
+app/models/attendance.py:204: new blank line at EOF.
+app/models/invoice.py:198: new blank line at EOF.
+app/models/member.py:215: new blank line at EOF.
+app/models/membership.py:205: new blank line at EOF.
+app/models/membership_plan.py:137: new blank line at EOF.
+app/models/payment.py:196: new blank line at EOF.
+app/models/receipt.py:120: new blank line at EOF.
+app/models/refund.py:159: new blank line at EOF.
+app/models/reminder.py:185: new blank line at EOF.
+app/schemas/attendance.py:171: new blank line at EOF.
+app/schemas/invoices.py:122: new blank line at EOF.
+app/schemas/members.py:220: new blank line at EOF.
+app/schemas/membership_plans.py:147: new blank line at EOF.
+app/schemas/memberships.py:126: new blank line at EOF.
+app/schemas/payments.py:145: new blank line at EOF.
+app/schemas/receipts.py:31: new blank line at EOF.
+app/schemas/reminders.py:297: new blank line at EOF.
+app/services/__init__.py:2: new blank line at EOF.
+app/services/attendance_service.py:923: new blank line at EOF.
+app/services/invoice_service.py:340: new blank line at EOF.
+app/services/member_service.py:212: new blank line at EOF.
+app/services/membership_service.py:546: trailing whitespace.
+[32m+[m[41m    [m
+app/services/membership_service.py:606: new blank line at EOF.
+app/services/payment_service.py:584: new blank line at EOF.
+app/services/reminder_service.py:974: new blank line at EOF.
+frontend/app/dashboard/layout.tsx:90: new blank line at EOF.
+frontend/app/dashboard/members/[member_id]/edit/page.tsx:161: new blank line at EOF.
+frontend/app/dashboard/members/[member_id]/page.tsx:440: new blank line at EOF.
+frontend/app/dashboard/members/new/page.tsx:262: new blank line at EOF.
+frontend/app/dashboard/members/page.tsx:232: new blank line at EOF.
+frontend/app/dashboard/plans/page.tsx:260: new blank line at EOF.
+frontend/app/login/page.tsx:93: new blank line at EOF.
+tests/test_auth.py:26: trailing whitespace.
+[32m+[m[41m    [m
+tests/test_invoices.py:339: new blank line at EOF.
+tests/test_membership_plans.py:239: new blank line at EOF.
+tests/test_memberships.py:424: new blank line at EOF.
+tests/test_payments.py:333: new blank line at EOF.
+tests/test_receipts_and_refunds.py:365: new blank line at EOF.
+tests/test_reminders.py:550: new blank line at EOF.
