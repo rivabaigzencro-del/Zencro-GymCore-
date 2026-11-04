@@ -1,1 +1,0 @@
-"""GymCore Backend Application Package."""
