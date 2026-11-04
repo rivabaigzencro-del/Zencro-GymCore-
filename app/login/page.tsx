@@ -14,13 +14,22 @@ import {
   AlertCircle,
   HelpCircle,
   X,
-  ShieldCheck,
+  UserCog,
+  UserCheck,
+  Building,
+  Info,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMounted } from "@/lib/use-mounted";
-import { setStoredAuthToken } from "@/lib/api-client";
+import {
+  setStoredAuthToken,
+  setActiveSession,
+  DEMO_ACCOUNTS,
+  type UserRole,
+  type UserSession,
+} from "@/lib/api-client";
 import { logAuditAction } from "@/lib/mock-data";
 
 export default function LoginPage() {
@@ -29,19 +38,38 @@ export default function LoginPage() {
   const { resolvedTheme, setTheme } = useTheme();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("admin@gymcore.com");
-  const [password, setPassword] = useState("admin123");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("Owner");
+  const [email, setEmail] = useState("owner@gymcore.com");
+  const [password, setPassword] = useState("owner123");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [isForgotOpen, setIsForgotOpen] = useState(false);
 
   const isDark = resolvedTheme === "dark";
 
+  const handleSelectDemoRole = (role: UserRole) => {
+    setSelectedRole(role);
+    setErrorMsg("");
+    if (role === "Owner") {
+      setEmail("owner@gymcore.com");
+      setPassword("owner123");
+    } else if (role === "Manager") {
+      setEmail("manager@gymcore.com");
+      setPassword("manager123");
+    } else if (role === "Front Desk") {
+      setEmail("frontdesk@gymcore.com");
+      setPassword("frontdesk123");
+    }
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!email.trim() || !password.trim()) {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
       setErrorMsg("Please enter both email address and password.");
       return;
     }
@@ -49,18 +77,37 @@ export default function LoginPage() {
     setIsLoading(true);
 
     setTimeout(() => {
-      // Store session token
-      setStoredAuthToken("gymcore_admin_session_jwt_active", "gymcore_refresh_token_active");
+      // Find matching demo account or construct session from inputs
+      const matchedDemo = DEMO_ACCOUNTS[trimmedEmail];
+      const sessionUser: UserSession = matchedDemo
+        ? {
+            id: matchedDemo.id,
+            name: matchedDemo.name,
+            email: matchedDemo.email,
+            role: matchedDemo.role,
+            title: matchedDemo.title,
+          }
+        : {
+            id: `USR-${Date.now().toString().slice(-4)}`,
+            name: trimmedEmail.split("@")[0].toUpperCase(),
+            email: trimmedEmail,
+            role: selectedRole,
+            title: `${selectedRole} User`,
+          };
 
-      // Audit log the login
+      // Store session and auth token
+      setActiveSession(sessionUser);
+      setStoredAuthToken(`gymcore_${sessionUser.role.toLowerCase().replace(/\s+/g, "_")}_jwt_active`, "gymcore_refresh_token_active");
+
+      // Audit log the login event
       logAuditAction({
         action: "SETTINGS_UPDATE",
-        actionLabel: "Administrator Signed In",
+        actionLabel: `${sessionUser.role} Signed In`,
         entityType: "System",
-        entityId: "AUTH-SESSION",
-        entityName: email.trim(),
-        performedBy: email.trim(),
-        description: `Administrator ${email.trim()} signed into GYMCORE operations console.`,
+        entityId: sessionUser.id,
+        entityName: sessionUser.name,
+        performedBy: sessionUser.name,
+        description: `${sessionUser.name} (${sessionUser.role}) signed into GYMCORE operations console.`,
         severity: "info",
       });
 
@@ -82,7 +129,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="mb-8 flex flex-col items-center">
+        <div className="mb-6 flex flex-col items-center">
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#C9A04F] text-black shadow-[0_0_20px_rgba(201,160,79,0.3)]">
             <Dumbbell size={30} />
           </div>
@@ -91,13 +138,13 @@ export default function LoginPage() {
             GYMCORE
           </h1>
 
-          <p className="mt-2 text-xs font-semibold tracking-wider text-[#C9A04F]">
+          <p className="mt-1 text-xs font-semibold tracking-wider text-[#C9A04F]">
             STRONGER BUSINESS • HEALTHIER COMMUNITY
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="relative rounded-2xl border border-border/80 bg-card/95 backdrop-blur-md p-8 shadow-2xl overflow-hidden">
+        <div className="relative rounded-2xl border border-border/80 bg-card/95 backdrop-blur-md p-6 sm:p-8 shadow-2xl overflow-hidden">
           {/* Subtle top gold accent bar */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#C9A04F] to-transparent" />
 
@@ -105,9 +152,51 @@ export default function LoginPage() {
             Welcome back
           </h2>
 
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sign in to manage your fitness center operations.
+          <p className="mt-1 text-xs text-muted-foreground">
+            Sign in with a demo role to explore gym management operations.
           </p>
+
+          {/* Role Switcher Presets */}
+          <div className="mt-5">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+              Select Demo Persona
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(["Owner", "Manager", "Front Desk"] as UserRole[]).map((role) => {
+                const isSelected = selectedRole === role;
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => handleSelectDemoRole(role)}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                      isSelected
+                        ? "border-[#C9A04F] bg-[#C9A04F]/15 text-[#C9A04F] shadow-[0_0_12px_rgba(201,160,79,0.2)]"
+                        : "border-border/70 bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    }`}
+                  >
+                    {role === "Owner" && <Building size={16} className="mb-1" />}
+                    {role === "Manager" && <UserCog size={16} className="mb-1" />}
+                    {role === "Front Desk" && <UserCheck size={16} className="mb-1" />}
+                    <span>{role}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Role Permissions Preview */}
+            <div className="mt-2.5 rounded-lg bg-muted/40 p-2 text-[11px] text-muted-foreground border border-border/50">
+              {selectedRole === "Owner" && (
+                <span>👑 <strong>Owner:</strong> Full administrative access across all modules, settings, staff, and financial reports.</span>
+              )}
+              {selectedRole === "Manager" && (
+                <span>💼 <strong>Manager:</strong> Operational control over members, attendance, plans, and payments. Restricted from staff deletion & gym ownership settings.</span>
+              )}
+              {selectedRole === "Front Desk" && (
+                <span>📋 <strong>Front Desk:</strong> Daily operations: member registration, membership assignment, payment collection, receipts, and attendance.</span>
+              )}
+            </div>
+          </div>
 
           {errorMsg && (
             <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
@@ -116,10 +205,10 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form noValidate onSubmit={handleLogin} className="mt-6 space-y-4">
+          <form noValidate onSubmit={handleLogin} className="mt-5 space-y-4">
             {/* Email */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
+              <label htmlFor="login-email" className="text-xs font-semibold text-foreground">
                 Email address
               </label>
 
@@ -127,13 +216,14 @@ export default function LoginPage() {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={17} />
 
                 <Input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (errorMsg) setErrorMsg("");
                   }}
-                  placeholder="admin@gymcore.com"
+                  placeholder="name@gymcore.com"
                   className="pl-10 rounded-xl border-border/80 bg-muted/40 focus:border-[#C9A04F]"
                   required
                 />
@@ -143,7 +233,7 @@ export default function LoginPage() {
             {/* Password */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-foreground">
+                <label htmlFor="login-password" className="text-xs font-semibold text-foreground">
                   Password
                 </label>
                 <button
@@ -159,6 +249,7 @@ export default function LoginPage() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={17} />
 
                 <Input
+                  id="login-password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => {
@@ -187,68 +278,69 @@ export default function LoginPage() {
               disabled={isLoading}
               className="w-full mt-2 rounded-xl bg-[#C9A04F] font-bold text-black hover:bg-[#b68d3e] shadow-[0_0_20px_rgba(201,160,79,0.25)] h-11"
             >
-              {isLoading ? "Signing in..." : "Sign In to GYMCORE"}
+              {isLoading ? "Signing in..." : `Sign In as ${selectedRole}`}
             </Button>
           </form>
 
-          {/* Quick Demo Credentials Banner */}
-          <div className="mt-6 rounded-xl border border-border/60 bg-muted/30 p-3 text-center text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Demo Credentials: </span>
-            <span className="font-mono text-[#C9A04F]">admin@gymcore.com</span> /{" "}
-            <span className="font-mono text-[#C9A04F]">admin123</span>
+          {/* Security Notice Disclaimer */}
+          <div className="mt-5 rounded-xl border border-border/60 bg-muted/30 p-3 text-[11px] text-muted-foreground leading-relaxed flex items-start gap-2">
+            <Info size={14} className="shrink-0 text-[#C9A04F] mt-0.5" />
+            <span>
+              <strong>Frontend Simulation:</strong> Demo credentials enable client-side role exploration. Actual authorization & tenant boundary enforcement is validated by the FastAPI backend.
+            </span>
           </div>
-
-          <p className="mt-5 text-center text-[11px] text-muted-foreground">
-            GYMCORE © 2026. All rights reserved.
-          </p>
         </div>
+
+        <p className="text-center text-[#9B968C] text-xs mt-6">
+          GymCore &copy; 2026 • Stronger Business. Healthier Community.
+        </p>
       </div>
 
       {/* Forgot Password Modal */}
       {isForgotOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => setIsForgotOpen(false)}
+          />
+
           <div className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-[#C9A04F]/10 p-2 text-[#C9A04F]">
-                  <HelpCircle size={18} />
-                </div>
-                <h3 className="text-sm font-bold text-foreground">Password Recovery</h3>
+              <div className="flex items-center gap-2 text-foreground font-semibold text-sm">
+                <HelpCircle size={17} className="text-[#C9A04F]" />
+                <span>Password Recovery</span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsForgotOpen(false)}
-                className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Close modal"
               >
-                <X size={16} />
+                <X size={17} />
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 text-xs text-muted-foreground">
+            <div className="py-4 space-y-3 text-xs text-muted-foreground leading-relaxed">
               <p>
-                Administrative access in GYMCORE requires verified identity protocols.
+                In standalone demo mode, password resets are managed locally. You can sign in using any of the preset demo roles:
               </p>
-              <div className="rounded-xl border border-border bg-background p-3 text-foreground font-medium">
-                <div className="flex items-center gap-1.5 text-[#C9A04F] font-bold mb-1">
-                  <ShieldCheck size={14} />
-                  <span>Admin Recovery Protocol</span>
-                </div>
-                Contact your gym super-administrator or IT desk supervisor to issue a temporary access link.
+              <div className="space-y-1.5 font-mono text-[11px] rounded-lg bg-muted p-2.5 border border-border/60">
+                <p>• Owner: <span className="text-[#C9A04F]">owner@gymcore.com</span> / owner123</p>
+                <p>• Manager: <span className="text-[#C9A04F]">manager@gymcore.com</span> / manager123</p>
+                <p>• Front Desk: <span className="text-[#C9A04F]">frontdesk@gymcore.com</span> / frontdesk123</p>
               </div>
-              <p className="text-[11px]">
-                Demo master credentials remain: <span className="font-mono text-[#C9A04F]">admin123</span>
+              <p className="text-[11px] text-muted-foreground/80">
+                In production, password reset requests generate a secure time-limited token delivered via SMTP.
               </p>
             </div>
 
-            <div className="mt-5 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsForgotOpen(false)}
-                className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e]"
-              >
-                Got It
-              </button>
-            </div>
+            <Button
+              type="button"
+              onClick={() => setIsForgotOpen(false)}
+              className="w-full rounded-xl bg-[#C9A04F] font-semibold text-black hover:bg-[#b68d3e]"
+            >
+              Understood
+            </Button>
           </div>
         </div>
       )}

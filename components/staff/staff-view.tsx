@@ -23,6 +23,7 @@ import {
   MapPin,
   Calendar,
   IndianRupee,
+  Lock,
 } from "lucide-react";
 import {
   type StaffMember,
@@ -35,6 +36,11 @@ import {
   sortStaffByNumericId,
   logAuditAction,
 } from "@/lib/mock-data";
+import {
+  setActiveSession,
+  DEMO_ACCOUNTS,
+} from "@/lib/api-client";
+import { useSessionStore } from "@/lib/use-session-store";
 import { useStaffStore } from "@/lib/use-staff-store";
 import {
   isValidIndianMobile,
@@ -44,6 +50,7 @@ import {
 
 export function StaffView() {
   const staff = useStaffStore();
+  const session = useSessionStore();
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -364,6 +371,39 @@ export function StaffView() {
         return "border-border bg-card text-foreground";
     }
   };
+
+  if (session?.role === "Front Desk") {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
+            <Lock size={28} />
+          </div>
+          <h2 className="mt-4 text-xl font-bold text-foreground">Access Restricted — Front Desk Demo Role</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Front Desk staff have permissions for Member Registration, Membership Assignment, Payment Collection, Receipts, and Attendance Check-in only.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground/80">
+            Staff management, salary records, and employee rosters are restricted to Gym Owners and Managers.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={() => setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"])}
+              className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e] transition"
+            >
+              Switch to Owner (Vikram)
+            </button>
+            <button
+              onClick={() => setActiveSession(DEMO_ACCOUNTS["manager@gymcore.com"])}
+              className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition"
+            >
+              Switch to Manager (Rajesh)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -705,10 +745,11 @@ export function StaffView() {
               {/* Name & Role */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="staff-name" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Full Name <span className="text-red-400">*</span>
                   </label>
                   <input
+                    id="staff-name"
                     type="text"
                     placeholder="e.g. Vikram Rathore"
                     value={formData.name}
@@ -721,10 +762,11 @@ export function StaffView() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="staff-role" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Role / Designation
                   </label>
                   <select
+                    id="staff-role"
                     value={formData.role}
                     onChange={(e) =>
                       setFormData({ ...formData, role: e.target.value as StaffRole })
@@ -743,10 +785,11 @@ export function StaffView() {
               {/* Phone & Email */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="staff-phone" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Mobile Number <span className="text-red-400">*</span>
                   </label>
                   <input
+                    id="staff-phone"
                     type="tel"
                     placeholder="+91 98450 12345"
                     value={formData.phone}
@@ -759,10 +802,11 @@ export function StaffView() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="staff-email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Email Address <span className="text-red-400">*</span>
                   </label>
                   <input
+                    id="staff-email"
                     type="email"
                     placeholder="vikram@gymcore.fit"
                     value={formData.email}
@@ -778,7 +822,7 @@ export function StaffView() {
               {/* Salary & Joining Date */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="staff-salary" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Monthly Salary (INR ₹)
                   </label>
                   <div className="relative mt-1">
@@ -786,6 +830,7 @@ export function StaffView() {
                       ₹
                     </span>
                     <input
+                      id="staff-salary"
                       type="number"
                       min={1000}
                       step={500}
@@ -802,10 +847,11 @@ export function StaffView() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="staff-joining-date" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Joining Date
                   </label>
                   <input
+                    id="staff-joining-date"
                     type="date"
                     value={formData.joiningDate}
                     onChange={(e) =>
@@ -819,10 +865,11 @@ export function StaffView() {
               {/* Specialization & Status */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="staff-specialization" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Specialization / Skills
                   </label>
                   <input
+                    id="staff-specialization"
                     type="text"
                     placeholder="e.g. CrossFit, Nutrition Coach"
                     value={formData.specialization}
@@ -834,10 +881,11 @@ export function StaffView() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="staff-status" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Employment Status
                   </label>
                   <select
+                    id="staff-status"
                     value={formData.status}
                     onChange={(e) =>
                       setFormData({ ...formData, status: e.target.value as StaffStatus })
@@ -1045,20 +1093,45 @@ export function StaffView() {
               </strong>
               ? This action will permanently remove their profile and records.
             </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setStaffToDelete(null)}
-                className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
-              >
-                Confirm Remove
-              </button>
-            </div>
+            {session?.role === "Manager" ? (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+                  <strong>Manager Permission Notice:</strong> Permanent employee deletion is restricted to Owner privileges. Managers may toggle status to &quot;Inactive&quot; instead.
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setStaffToDelete(null)}
+                    className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"]);
+                      showNotification("Switched to Owner demo role with deletion privileges");
+                    }}
+                    className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e]"
+                  >
+                    Switch to Owner to Delete
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setStaffToDelete(null)}
+                  className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors"
+                >
+                  Confirm Remove
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

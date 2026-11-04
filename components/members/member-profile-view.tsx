@@ -288,7 +288,7 @@ export function MemberProfileView({ memberId }: Props) {
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={handleOpenEdit}
-            className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-foreground transition hover:bg-muted touch-manipulation min-h-[40px]"
           >
             <Edit size={15} />
             <span>Edit Profile</span>
@@ -296,7 +296,7 @@ export function MemberProfileView({ memberId }: Props) {
 
           <button
             onClick={handleToggleFreeze}
-            className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition ${
+            className={`flex items-center gap-2 rounded-xl border px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition touch-manipulation min-h-[40px] ${
               member.status === "Frozen"
                 ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20"
                 : "border-border bg-card text-foreground hover:bg-muted"
@@ -308,7 +308,7 @@ export function MemberProfileView({ memberId }: Props) {
 
           <button
             onClick={() => setIsRenewOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-[#C9A04F] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#b68d3e]"
+            className="flex items-center gap-2 rounded-xl bg-[#C9A04F] px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-black transition hover:bg-[#b68d3e] touch-manipulation min-h-[40px]"
           >
             <RefreshCw size={15} />
             <span>Renew Membership</span>

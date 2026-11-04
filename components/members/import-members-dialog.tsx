@@ -414,6 +414,7 @@ Vikram Malhotra,vikram.m@example.com,9712345678,Basic,2026-11-03,"+91 98765 0001
             }`}
           >
             <input
+              id="member-csv-file"
               type="file"
               ref={fileInputRef}
               accept=".csv, text/csv"
@@ -449,7 +450,9 @@ Vikram Malhotra,vikram.m@example.com,9712345678,Basic,2026-11-03,"+91 98765 0001
           </div>
         ) : (
           <div className="mt-4 space-y-3">
+            <label htmlFor="member-csv-paste" className="sr-only">Paste CSV Text</label>
             <textarea
+              id="member-csv-paste"
               rows={4}
               placeholder="Paste raw CSV text here (e.g. Name, Email, Phone, Plan)..."
               value={pastedText}
@@ -491,8 +494,8 @@ Vikram Malhotra,vikram.m@example.com,9712345678,Basic,2026-11-03,"+91 98765 0001
             </div>
 
             {/* Preview Table */}
-            <div className="max-h-60 overflow-y-auto rounded-xl border border-border bg-background/30">
-              <table className="w-full text-left text-xs">
+            <div className="max-h-60 overflow-x-auto overflow-y-auto rounded-xl border border-border bg-background/30">
+              <table className="w-full min-w-[550px] text-left text-xs">
                 <thead className="sticky top-0 border-b border-border bg-card text-[11px] uppercase tracking-wider text-muted-foreground">
                   <tr>
                     <th className="p-2.5">Row</th>

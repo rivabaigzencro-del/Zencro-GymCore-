@@ -19,10 +19,16 @@ import {
   saveSettings,
   resetSettingsToDefault,
 } from "@/lib/mock-data";
+import {
+  setActiveSession,
+  DEMO_ACCOUNTS,
+} from "@/lib/api-client";
+import { useSessionStore } from "@/lib/use-session-store";
 import { useSettingsStore } from "@/lib/use-settings-store";
 
 export function SettingsView() {
   const currentSettings = useSettingsStore();
+  const session = useSessionStore();
 
   const [activeTab, setActiveTab] = useState<
     "profile" | "hours" | "business" | "notifications" | "account"
@@ -80,6 +86,42 @@ export function SettingsView() {
     setIsResetConfirmOpen(false);
     showNotification("Settings restored to factory defaults.");
   };
+
+  if (session?.role === "Front Desk") {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
+            <Lock size={28} />
+          </div>
+          <h2 className="mt-4 text-xl font-bold text-foreground">Access Restricted — Front Desk Demo Role</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Front Desk staff have permissions for Member Registration, Membership Assignment, Payment Collection, Receipts, and Attendance Check-in only.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground/80">
+            Club profile identity, business policies, and security settings are restricted to Gym Owners and Managers.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={() => setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"])}
+              className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e] transition"
+            >
+              Switch to Owner (Vikram)
+            </button>
+            <button
+              onClick={() => setActiveSession(DEMO_ACCOUNTS["manager@gymcore.com"])}
+              className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition"
+            >
+              Switch to Manager (Rajesh)
+            </button>
+          </div>
+          <p className="mt-6 text-[11px] text-muted-foreground/70">
+            Frontend demo simulation. Actual permissions will be enforced by Riva&apos;s FastAPI backend.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -218,10 +260,11 @@ export function SettingsView() {
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <label htmlFor="gym-name" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       Gym Name
                     </label>
                     <input
+                      id="gym-name"
                       type="text"
                       value={formData.gymName}
                       onChange={(e) => setFormData({ ...formData, gymName: e.target.value })}
@@ -230,10 +273,11 @@ export function SettingsView() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <label htmlFor="gym-tagline" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       Tagline / Slogan
                     </label>
                     <input
+                      id="gym-tagline"
                       type="text"
                       value={formData.tagline}
                       onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
@@ -244,10 +288,11 @@ export function SettingsView() {
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    <label htmlFor="gym-phone" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       Official Phone
                     </label>
                     <input
+                      id="gym-phone"
                       type="text"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -608,10 +653,11 @@ export function SettingsView() {
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div>
-                      <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <label htmlFor="current-password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         Current Password
                       </label>
                       <input
+                        id="current-password"
                         type="password"
                         placeholder="••••••••"
                         value={currentPassword}
@@ -621,10 +667,11 @@ export function SettingsView() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <label htmlFor="new-password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         New Password
                       </label>
                       <input
+                        id="new-password"
                         type="password"
                         placeholder="••••••••"
                         value={newPassword}
@@ -634,10 +681,11 @@ export function SettingsView() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <label htmlFor="confirm-password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         Confirm New Password
                       </label>
                       <input
+                        id="confirm-password"
                         type="password"
                         placeholder="••••••••"
                         value={confirmPassword}

@@ -697,8 +697,8 @@ export function PaymentsView() {
                             </span>
                           </td>
 
-                          <td className="py-3.5 pr-2 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                          <td className="py-3.5 pr-2 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5 flex-nowrap">
                               {due.remainingBalance > 0 ? (
                                 <button
                                   onClick={() => openCollectModal(due)}
@@ -855,10 +855,10 @@ export function PaymentsView() {
                           {p.status}
                         </span>
                       </td>
-                      <td className="py-3.5 pr-2 text-right">
+                      <td className="py-3.5 pr-2 text-right whitespace-nowrap">
                         <button
                           onClick={() => setReceiptRecord(p)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:border-[#C9A04F] hover:text-[#C9A04F] transition-colors"
+                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground hover:border-[#C9A04F] hover:text-[#C9A04F] transition-colors"
                         >
                           <Receipt size={13} />
                           <span>Receipt</span>
@@ -889,7 +889,7 @@ export function PaymentsView() {
               <h2 className="text-lg font-bold text-foreground">Collect Outstanding Due</h2>
             </div>
 
-            <form onSubmit={handleCollectSubmit} className="mt-5 space-y-4">
+            <form onSubmit={handleCollectSubmit} noValidate className="mt-5 space-y-4">
               {/* Target Due Info */}
               <div className="rounded-xl border border-border bg-background/50 p-4 space-y-2 text-xs">
                 <div className="flex justify-between">
@@ -1171,6 +1171,7 @@ export function PaymentsView() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm overflow-y-auto">
           <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl">
             <button
+              type="button"
               onClick={() => setIsRecordModalOpen(false)}
               className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
@@ -1182,7 +1183,7 @@ export function PaymentsView() {
               <h2 className="text-lg font-bold text-foreground">Record Member Payment</h2>
             </div>
 
-            <form onSubmit={handleRecordPayment} className="mt-5 space-y-4">
+            <form onSubmit={handleRecordPayment} noValidate className="mt-5 space-y-4">
               {/* Member select */}
               <div>
                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

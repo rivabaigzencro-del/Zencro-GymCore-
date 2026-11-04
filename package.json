@@ -10,7 +10,8 @@
     "test": "node scripts/verify-fixes.mjs",
     "test:e2e": "node scripts/e2e-workflow-test.mjs",
     "test:browser": "node scripts/browser-test.mjs",
-    "test:interactive": "node scripts/interactive-ui-test.mjs"
+    "test:interactive": "node scripts/interactive-ui-test.mjs",
+    "test:full": "node scripts/full-regression-test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

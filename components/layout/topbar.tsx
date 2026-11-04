@@ -22,14 +22,19 @@ import {
   Settings,
   Dumbbell,
   LogOut,
-  UserCheck,
   ShieldCheck,
   AlertTriangle,
   Clock,
   CheckCircle2,
+  Lock,
 } from "lucide-react";
 import { useMounted } from "@/lib/use-mounted";
-import { clearStoredAuthTokens } from "@/lib/api-client";
+import {
+  setActiveSession,
+  clearActiveSession,
+  DEMO_ACCOUNTS,
+} from "@/lib/api-client";
+import { useSessionStore } from "@/lib/use-session-store";
 
 const navigation = [
   { name: "Overview", icon: LayoutDashboard, href: "/" },
@@ -94,11 +99,35 @@ function TopbarContent() {
   const mounted = useMounted();
   const { resolvedTheme, setTheme } = useTheme();
 
+  const session = useSessionStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const userInitials = session?.name
+    ? session.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "U";
+
+  const handleSwitchDemoAccount = (email: string) => {
+    const target = DEMO_ACCOUNTS[email];
+    if (target) {
+      setActiveSession({
+        id: target.id,
+        name: target.name,
+        email: target.email,
+        role: target.role,
+        title: target.title,
+      });
+      setProfileOpen(false);
+    }
+  };
 
   const isDark = resolvedTheme === "dark";
   const headerInfo = getHeaderInfo(pathname);
@@ -269,17 +298,22 @@ function TopbarContent() {
               aria-label="User profile menu"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#C9A04F] text-xs font-bold text-black shadow-sm">
-                A
+                {userInitials}
               </div>
 
               <div className="hidden text-left sm:block">
-                <p className="text-xs font-semibold text-foreground leading-tight">
-                  Admin
+                <p className="text-xs font-semibold text-foreground leading-tight truncate max-w-[120px]">
+                  {session?.name || "Demo User"}
                 </p>
 
-                <p className="text-[10px] text-muted-foreground leading-tight">
-                  Manager
-                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] font-semibold text-[#C9A04F] leading-tight">
+                    {session?.role || "Demo Role"}
+                  </span>
+                  <span className="rounded bg-[#C9A04F]/20 px-1 py-0.2 text-[8px] font-bold text-[#C9A04F]">
+                    DEMO
+                  </span>
+                </div>
               </div>
 
               <ChevronDown
@@ -295,30 +329,102 @@ function TopbarContent() {
                   className="fixed inset-0 z-40"
                   onClick={() => setProfileOpen(false)}
                 />
-                <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-border bg-card p-1.5 shadow-lg">
-                  <div className="border-b border-border px-3 py-2">
-                    <p className="text-xs font-semibold text-foreground">Gymcore Admin</p>
-                    <p className="text-[11px] text-muted-foreground">admin@gymcore.com</p>
+                <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-card p-2 shadow-2xl animate-in fade-in zoom-in-95">
+                  {/* Current Account Card */}
+                  <div className="rounded-lg border border-border bg-muted/40 p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-bold text-foreground truncate">{session?.name}</p>
+                      <span className="rounded-full bg-[#C9A04F]/20 px-2 py-0.5 text-[10px] font-bold text-[#C9A04F]">
+                        {session?.role}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{session?.email}</p>
+                    <p className="text-[10px] text-muted-foreground/80 mt-1 italic">{session?.title}</p>
                   </div>
-                  <Link
-                    href="/settings"
-                    onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-foreground transition hover:bg-muted"
-                  >
-                    <UserCheck size={14} className="text-muted-foreground" />
-                    <span>Admin Settings</span>
-                  </Link>
-                  <Link
-                    href="/login"
-                    onClick={() => {
-                      clearStoredAuthTokens();
-                      setProfileOpen(false);
-                    }}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-red-500 transition hover:bg-red-500/10"
-                  >
-                    <LogOut size={14} />
-                    <span>Sign Out</span>
-                  </Link>
+
+                  {/* Switch Persona Section */}
+                  <div className="mt-2 border-t border-border pt-2">
+                    <p className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Switch Demo Role
+                    </p>
+                    <div className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchDemoAccount("owner@gymcore.com")}
+                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition ${
+                          session?.role === "Owner"
+                            ? "bg-[#C9A04F]/15 text-[#C9A04F] font-semibold"
+                            : "text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <span className="truncate">Vikram (Owner)</span>
+                        <span className="text-[10px] text-muted-foreground">Full Access</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchDemoAccount("manager@gymcore.com")}
+                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition ${
+                          session?.role === "Manager"
+                            ? "bg-[#C9A04F]/15 text-[#C9A04F] font-semibold"
+                            : "text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <span className="truncate">Rajesh (Manager)</span>
+                        <span className="text-[10px] text-muted-foreground">Operations</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchDemoAccount("frontdesk@gymcore.com")}
+                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition ${
+                          session?.role === "Front Desk"
+                            ? "bg-[#C9A04F]/15 text-[#C9A04F] font-semibold"
+                            : "text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <span className="truncate">Ananya (Front Desk)</span>
+                        <span className="text-[10px] text-muted-foreground">Desk Ops</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Links */}
+                  <div className="mt-2 border-t border-border pt-2 space-y-0.5">
+                    {session?.role !== "Front Desk" ? (
+                      <Link
+                        href="/settings"
+                        onClick={() => setProfileOpen(false)}
+                        className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-foreground transition hover:bg-muted"
+                      >
+                        <Settings size={14} className="text-muted-foreground" />
+                        <span>System Settings</span>
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] text-muted-foreground/70">
+                        <Lock size={13} />
+                        <span>Settings restricted for Front Desk</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearActiveSession();
+                        setProfileOpen(false);
+                        router.push("/login");
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-red-500 transition hover:bg-red-500/10"
+                    >
+                      <LogOut size={14} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+
+                  {/* Security Disclaimer */}
+                  <div className="mt-2 border-t border-border pt-2 px-2 pb-1 text-[10px] text-muted-foreground/80 text-center">
+                    Frontend demo simulation. Backend RBAC is enforced by Riva&apos;s FastAPI services.
+                  </div>
                 </div>
               </>
             )}

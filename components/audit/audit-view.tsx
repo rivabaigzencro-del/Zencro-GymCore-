@@ -23,10 +23,16 @@ import {
   type AuditSeverity,
   generateAuditCsv,
 } from "@/lib/audit-trail";
+import {
+  setActiveSession,
+  DEMO_ACCOUNTS,
+} from "@/lib/api-client";
+import { useSessionStore } from "@/lib/use-session-store";
 import { useAuditStore } from "@/lib/use-audit-store";
 
 export function AuditView() {
   const auditLogs = useAuditStore();
+  const session = useSessionStore();
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -174,6 +180,42 @@ export function AuditView() {
         );
     }
   };
+
+  if (session?.role === "Front Desk") {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
+            <Lock size={28} />
+          </div>
+          <h2 className="mt-4 text-xl font-bold text-foreground">Access Restricted — Front Desk Demo Role</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Front Desk staff have permissions for Member Registration, Membership Assignment, Payment Collection, Receipts, and Attendance Check-in only.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground/80">
+            Audit logs and compliance monitoring are restricted to Gym Owners and Managers.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={() => setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"])}
+              className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e] transition"
+            >
+              Switch to Owner (Vikram)
+            </button>
+            <button
+              onClick={() => setActiveSession(DEMO_ACCOUNTS["manager@gymcore.com"])}
+              className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition"
+            >
+              Switch to Manager (Rajesh)
+            </button>
+          </div>
+          <p className="mt-6 text-[11px] text-muted-foreground/70">
+            Frontend demo simulation. Actual permissions will be enforced by Riva&apos;s FastAPI backend.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

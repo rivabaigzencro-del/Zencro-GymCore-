@@ -17,6 +17,102 @@ const DEFAULT_CONFIG: ApiClientConfig = {
 
 const TOKEN_STORAGE_KEY = "gymcore_auth_token_jwt";
 const REFRESH_TOKEN_STORAGE_KEY = "gymcore_refresh_token_jwt";
+const SESSION_STORAGE_KEY = "gymcore_user_session";
+
+export type UserRole = "Owner" | "Manager" | "Front Desk";
+
+export interface UserSession {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  title?: string;
+}
+
+export const DEMO_ACCOUNTS: Record<string, UserSession & { password: string; title: string }> = {
+  "admin@gymcore.com": {
+    id: "USR-001",
+    name: "Vikram Malhotra",
+    email: "admin@gymcore.com",
+    role: "Owner",
+    title: "Gym Owner and Administrator",
+    password: "admin123",
+  },
+  "owner@gymcore.com": {
+    id: "USR-001",
+    name: "Vikram Malhotra",
+    email: "owner@gymcore.com",
+    role: "Owner",
+    title: "Gym Owner and Administrator",
+    password: "owner123",
+  },
+  "manager@gymcore.com": {
+    id: "USR-002",
+    name: "Rajesh Khanna",
+    email: "manager@gymcore.com",
+    role: "Manager",
+    title: "Floor and Operations Manager",
+    password: "manager123",
+  },
+  "frontdesk@gymcore.com": {
+    id: "USR-003",
+    name: "Ananya Sen",
+    email: "frontdesk@gymcore.com",
+    role: "Front Desk",
+    title: "Front Desk and Reception Staff",
+    password: "frontdesk123",
+  },
+};
+
+let cachedSession: UserSession | null = null;
+let cachedRaw: string | null = null;
+
+export function getActiveSession(): UserSession {
+  if (typeof window === "undefined") {
+    return DEMO_ACCOUNTS["owner@gymcore.com"];
+  }
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) {
+      cachedSession = DEMO_ACCOUNTS["owner@gymcore.com"];
+      cachedRaw = null;
+      return cachedSession;
+    }
+    if (raw === cachedRaw && cachedSession) {
+      return cachedSession;
+    }
+    cachedRaw = raw;
+    cachedSession = JSON.parse(raw);
+    return cachedSession!;
+  } catch {
+    return DEMO_ACCOUNTS["owner@gymcore.com"];
+  }
+}
+
+export function setActiveSession(session: UserSession): void {
+  if (typeof window === "undefined") return;
+  cachedRaw = JSON.stringify(session);
+  cachedSession = session;
+  localStorage.setItem(SESSION_STORAGE_KEY, cachedRaw);
+  window.dispatchEvent(new Event("gymcore_session_change"));
+}
+
+export function clearActiveSession(): void {
+  if (typeof window === "undefined") return;
+  cachedRaw = null;
+  cachedSession = DEMO_ACCOUNTS["owner@gymcore.com"];
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+  clearStoredAuthTokens();
+  window.dispatchEvent(new Event("gymcore_session_change"));
+}
+
+export function subscribeSession(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("gymcore_session_change", callback);
+  return () => {
+    window.removeEventListener("gymcore_session_change", callback);
+  };
+}
 
 /**
  * Token Storage & Retrieval
