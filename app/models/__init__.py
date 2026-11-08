@@ -16,6 +16,7 @@ from app.models.reminder import (
     ContactChannel,
     ContactOutcome,
 )
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "Base",
@@ -44,4 +45,5 @@ __all__ = [
     "ReminderCategory",
     "ContactChannel",
     "ContactOutcome",
+    "AuditLog",
 ]

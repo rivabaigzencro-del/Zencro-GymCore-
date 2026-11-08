@@ -30,6 +30,7 @@ from app.schemas.attendance import (
     MemberQRResponse,
 )
 from app.services.invoice_service import get_gym_today
+from app.services.audit_service import log_audit_event
 
 
 def _get_tenant_tz(db: Session, tenant_id: uuid.UUID) -> str:
@@ -359,6 +360,19 @@ def check_in_member(
     )
 
     db.add(attendance)
+
+    if is_override:
+        log_audit_event(
+            db=db,
+            tenant_id=tenant_id,
+            user_id=staff_user.id,
+            action="ATTENDANCE_OVERRIDE",
+            resource_type="ATTENDANCE",
+            resource_id=str(attendance.id),
+            after_values={"member_id": str(payload.member_id), "is_override": True},
+            reason=override_reason,
+        )
+
     db.commit()
     db.refresh(attendance)
     return attendance
@@ -441,6 +455,19 @@ def qr_check_in(
     )
 
     db.add(attendance)
+
+    if is_override:
+        log_audit_event(
+            db=db,
+            tenant_id=tenant_id,
+            user_id=staff_user.id if staff_user else None,
+            action="ATTENDANCE_OVERRIDE",
+            resource_type="ATTENDANCE",
+            resource_id=str(attendance.id),
+            after_values={"member_id": str(member.id), "is_override": True},
+            reason=override_reason,
+        )
+
     db.commit()
     db.refresh(attendance)
     return attendance

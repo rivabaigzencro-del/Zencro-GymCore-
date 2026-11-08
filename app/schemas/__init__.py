@@ -117,6 +117,18 @@ from app.schemas.imports import (
     ImportValidationError,
     ImportSummaryResponse,
 )
+from app.schemas.staff import (
+    StaffCreateRequest,
+    StaffUpdateRequest,
+    StaffStatusUpdateRequest,
+    StaffRoleUpdateRequest,
+    StaffResponse,
+    StaffListResponse,
+)
+from app.schemas.audit_logs import (
+    AuditLogResponse,
+    AuditLogListResponse,
+)
 
 __all__ = [
     "RegisterRequest",
@@ -213,4 +225,12 @@ __all__ = [
     "ExpiryReportResponse",
     "ImportValidationError",
     "ImportSummaryResponse",
+    "StaffCreateRequest",
+    "StaffUpdateRequest",
+    "StaffStatusUpdateRequest",
+    "StaffRoleUpdateRequest",
+    "StaffResponse",
+    "StaffListResponse",
+    "AuditLogResponse",
+    "AuditLogListResponse",
 ]

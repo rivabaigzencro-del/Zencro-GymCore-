@@ -42,6 +42,7 @@ from app.schemas.reminders import (
     ReminderSettingsUpdateRequest,
 )
 from app.services.membership_service import get_gym_today, sync_expired_memberships
+from app.services.audit_service import log_audit_event
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -951,16 +952,39 @@ def update_reminder_settings(
     db: Session,
     tenant_id: uuid.UUID,
     payload: ReminderSettingsUpdateRequest,
+    current_user: Optional[User] = None,
 ) -> ReminderSettingsResponse:
     """Update gym-level lapse grace period and expiry warning settings (OWNER / MANAGER only)."""
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
 
+    before_values = {
+        "membership_lapsed_grace_days": tenant.membership_lapsed_grace_days,
+        "membership_expiry_warning_days": tenant.membership_expiry_warning_days,
+    }
+
     if payload.membership_lapsed_grace_days is not None:
         tenant.membership_lapsed_grace_days = payload.membership_lapsed_grace_days
     if payload.membership_expiry_warning_days is not None:
         tenant.membership_expiry_warning_days = payload.membership_expiry_warning_days
+
+    after_values = {
+        "membership_lapsed_grace_days": tenant.membership_lapsed_grace_days,
+        "membership_expiry_warning_days": tenant.membership_expiry_warning_days,
+    }
+
+    log_audit_event(
+        db=db,
+        tenant_id=tenant_id,
+        user_id=current_user.id if current_user else None,
+        action="SETTINGS_UPDATE",
+        resource_type="TENANT",
+        resource_id=str(tenant.id),
+        before_values=before_values,
+        after_values=after_values,
+        reason="Gym reminder & expiry settings updated",
+    )
 
     db.add(tenant)
     db.commit()

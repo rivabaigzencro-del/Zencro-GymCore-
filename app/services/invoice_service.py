@@ -19,6 +19,7 @@ from app.schemas.invoices import (
     InvoiceListResponse,
     OutstandingDuesResponse,
 )
+from app.services.audit_service import log_audit_event
 
 
 def get_gym_today(db: Optional[Session] = None, tenant_id: Optional[uuid.UUID] = None) -> date:
@@ -87,6 +88,7 @@ def create_invoice(
     db: Session,
     tenant_id: uuid.UUID,
     payload: InvoiceCreateRequest,
+    user_id: Optional[uuid.UUID] = None,
 ) -> Invoice:
     """Create a new billing invoice strictly isolated to the authenticated tenant."""
     # 1. Verify member belongs to tenant
@@ -156,6 +158,23 @@ def create_invoice(
         )
 
         db.add(invoice)
+
+        log_audit_event(
+            db=db,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            action="INVOICE_CREATE",
+            resource_type="INVOICE",
+            resource_id=str(invoice.id),
+            after_values={
+                "invoice_number": invoice.invoice_number,
+                "amount_paise": invoice.amount_paise,
+                "member_id": str(invoice.member_id),
+                "invoice_status": invoice.invoice_status.value,
+            },
+            reason="Invoice created",
+        )
+
         try:
             db.commit()
             db.refresh(invoice)
@@ -272,6 +291,7 @@ def cancel_invoice(
     tenant_id: uuid.UUID,
     invoice_id: uuid.UUID,
     payload: Optional[InvoiceCancelRequest] = None,
+    user_id: Optional[uuid.UUID] = None,
 ) -> Invoice:
     """Cancel an invoice that has no outstanding paid amount."""
     invoice = get_invoice(db, tenant_id, invoice_id)
@@ -291,12 +311,26 @@ def cancel_invoice(
             ),
         )
 
+    before_status = invoice.invoice_status.value
     invoice.invoice_status = InvoiceStatus.CANCELLED
     if payload and payload.reason:
         desc = f"{invoice.description or ''} [Cancelled: {payload.reason}]".strip()
         invoice.description = desc[:500]
 
     db.add(invoice)
+
+    log_audit_event(
+        db=db,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        action="INVOICE_CANCEL",
+        resource_type="INVOICE",
+        resource_id=str(invoice.id),
+        before_values={"invoice_status": before_status},
+        after_values={"invoice_status": InvoiceStatus.CANCELLED.value},
+        reason=payload.reason if payload else "Invoice cancelled",
+    )
+
     db.commit()
     db.refresh(invoice)
     return invoice

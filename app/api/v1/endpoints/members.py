@@ -120,7 +120,7 @@ async def update_member(
     current_user: User = Depends(require_role(*_STAFF_ROLES)),
 ) -> MemberResponse:
     member = member_service.get_member_or_404(db, member_id, current_user.tenant_id)
-    return member_service.update_member(db, member, payload, current_user.tenant_id)
+    return member_service.update_member(db, member, payload, current_user.tenant_id, current_user=current_user)
 
 
 @router.delete(
@@ -135,6 +135,6 @@ async def delete_member(
     current_user: User = Depends(require_role(UserRole.OWNER, UserRole.MANAGER)),
 ) -> dict:
     member = member_service.get_member_or_404(db, member_id, current_user.tenant_id)
-    member_service.delete_member(db, member)
+    member_service.delete_member(db, member, current_user=current_user)
     return {"message": "Member deactivated successfully", "member_id": str(member_id)}
 

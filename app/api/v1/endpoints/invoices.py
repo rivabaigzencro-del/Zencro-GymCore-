@@ -36,7 +36,12 @@ async def create_invoice(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(*_MANAGE_ROLES)),
 ) -> InvoiceResponse:
-    invoice = invoice_service.create_invoice(db, current_user.tenant_id, payload)
+    invoice = invoice_service.create_invoice(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        payload=payload,
+        user_id=current_user.id,
+    )
     return InvoiceResponse.model_validate(invoice)
 
 
@@ -157,6 +162,12 @@ async def cancel_invoice(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(*_MANAGE_ROLES)),
 ) -> InvoiceResponse:
-    invoice = invoice_service.cancel_invoice(db, current_user.tenant_id, invoice_id, payload)
+    invoice = invoice_service.cancel_invoice(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        invoice_id=invoice_id,
+        payload=payload,
+        user_id=current_user.id,
+    )
     return InvoiceResponse.model_validate(invoice)
 

@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.receipt import Receipt
     from app.models.refund import Refund
     from app.models.attendance import Attendance
+    from app.models.audit_log import AuditLog
 
 
 class Tenant(Base):
@@ -182,6 +183,13 @@ class Tenant(Base):
         foreign_keys="ReminderLog.tenant_id",
         cascade="all, delete-orphan",
         doc="All reminder and follow-up contact logs for this tenant",
+    )
+    audit_logs = relationship(
+        "AuditLog",
+        back_populates="tenant",
+        foreign_keys="AuditLog.tenant_id",
+        cascade="all, delete-orphan",
+        doc="All audit log entries for this tenant",
     )
 
     def __repr__(self) -> str:

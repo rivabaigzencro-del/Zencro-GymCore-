@@ -14,6 +14,8 @@ from app.api.v1.endpoints import (
     reports,
     imports,
     exports,
+    staff,
+    audit_logs,
 )
 
 api_router = APIRouter()
@@ -76,4 +78,14 @@ api_router.include_router(
     exports.router,
     prefix="/exports",
     tags=["Exports"],
+)
+api_router.include_router(
+    staff.router,
+    prefix="/staff",
+    tags=["Staff Management"],
+)
+api_router.include_router(
+    audit_logs.router,
+    prefix="/audit-logs",
+    tags=["Audit Logs"],
 )

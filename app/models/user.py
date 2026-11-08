@@ -18,6 +18,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.tenant import Tenant
+    from app.models.audit_log import AuditLog
 
 
 class UserRole(str, enum.Enum):
@@ -102,6 +103,12 @@ class User(Base):
         "Tenant",
         back_populates="users",
         doc="Associated gym facility tenant",
+    )
+    audit_logs = relationship(
+        "AuditLog",
+        back_populates="user",
+        foreign_keys="AuditLog.user_id",
+        doc="Audit log entries performed by this staff member",
     )
 
     __table_args__ = (

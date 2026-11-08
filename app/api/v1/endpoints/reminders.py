@@ -338,6 +338,7 @@ async def update_reminder_settings(
         db=db,
         tenant_id=current_user.tenant_id,
         payload=payload,
+        current_user=current_user,
     )
 
 

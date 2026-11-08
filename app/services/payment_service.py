@@ -25,6 +25,7 @@ from app.schemas.payments import (
 )
 from app.schemas.receipts import ReceiptResponse
 from app.services.invoice_service import get_gym_today
+from app.services.audit_service import log_audit_event
 
 
 def _get_tenant_tz(db: Session, tenant_id: uuid.UUID) -> str:
@@ -172,6 +173,22 @@ def record_payment(
                 notes=f"Auto-generated receipt for {payment.payment_method} payment",
             )
             db.add(receipt)
+
+        log_audit_event(
+            db=db,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            action="PAYMENT_CREATE",
+            resource_type="PAYMENT",
+            resource_id=str(payment.id),
+            after_values={
+                "amount_paise": payment.amount_paise,
+                "payment_method": payment.payment_method.value if hasattr(payment.payment_method, "value") else str(payment.payment_method),
+                "member_id": str(payment.member_id),
+                "invoice_id": str(payment.invoice_id) if payment.invoice_id else None,
+            },
+            reason="Payment recorded",
+        )
 
         try:
             db.commit()
@@ -343,6 +360,18 @@ def refund_payment(
             )
         db.add(inv)
 
+    log_audit_event(
+        db=db,
+        tenant_id=tenant_id,
+        user_id=initiated_by_id,
+        action="PAYMENT_REFUND",
+        resource_type="REFUND",
+        resource_id=str(refund.id),
+        before_values={"payment_id": str(payment.id)},
+        after_values={"amount_paise": refund.amount_paise, "new_payment_status": payment.payment_status.value},
+        reason=payload.reason,
+    )
+
     db.commit()
     db.refresh(refund)
     return refund
@@ -410,6 +439,18 @@ def reverse_payment(
                 InvoiceStatus.OVERDUE if inv.due_date < today else InvoiceStatus.PARTIALLY_PAID
             )
         db.add(inv)
+
+    log_audit_event(
+        db=db,
+        tenant_id=tenant_id,
+        user_id=initiated_by_id,
+        action="PAYMENT_REVERSAL",
+        resource_type="REFUND",
+        resource_id=str(reversal.id),
+        before_values={"payment_id": str(payment.id)},
+        after_values={"amount_paise": reversal.amount_paise, "new_payment_status": payment.payment_status.value},
+        reason=payload.reason,
+    )
 
     db.commit()
     db.refresh(reversal)

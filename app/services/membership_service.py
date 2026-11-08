@@ -20,6 +20,7 @@ from app.schemas.memberships import (
     MembershipRenewRequest,
     MembershipUpgradeRequest,
 )
+from app.services.audit_service import log_audit_event
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -353,6 +354,7 @@ def freeze_membership(
     db: Session,
     membership: Membership,
     payload: MembershipFreezeRequest,
+    current_user: Optional[User] = None,
 ) -> Membership:
     """
     Freeze an ACTIVE membership immediately.
@@ -386,9 +388,27 @@ def freeze_membership(
             detail="Freeze start date must be before the membership end date",
         )
 
+    before_status = membership.status.value
     membership.status = MembershipStatus.FROZEN
     membership.freeze_start_date = payload.freeze_start_date
     membership.freeze_end_date = payload.freeze_end_date
+
+    log_audit_event(
+        db=db,
+        tenant_id=membership.tenant_id,
+        user_id=current_user.id if current_user else None,
+        action="MEMBERSHIP_FREEZE",
+        resource_type="MEMBERSHIP",
+        resource_id=str(membership.id),
+        before_values={"status": before_status},
+        after_values={
+            "status": MembershipStatus.FROZEN.value,
+            "freeze_start_date": payload.freeze_start_date.isoformat(),
+            "freeze_end_date": payload.freeze_end_date.isoformat() if payload.freeze_end_date else None,
+        },
+        reason=getattr(payload, "reason", None) or "Membership frozen",
+    )
+
     db.commit()
     db.refresh(membership)
     return membership
@@ -398,6 +418,7 @@ def unfreeze_membership(
     db: Session,
     membership: Membership,
     unfreeze_date: Optional[date] = None,
+    current_user: Optional[User] = None,
 ) -> Membership:
     """
     Unfreeze a FROZEN membership.
@@ -435,12 +456,29 @@ def unfreeze_membership(
     if frozen_days < 0:
         frozen_days = 0
 
+    before_end_date = membership.end_date.isoformat()
     # Extend end_date
     membership.end_date = membership.end_date + timedelta(days=frozen_days)
     membership.total_frozen_days += frozen_days
     membership.status = MembershipStatus.ACTIVE
     membership.freeze_start_date = None
     membership.freeze_end_date = None
+
+    log_audit_event(
+        db=db,
+        tenant_id=membership.tenant_id,
+        user_id=current_user.id if current_user else None,
+        action="MEMBERSHIP_UNFREEZE",
+        resource_type="MEMBERSHIP",
+        resource_id=str(membership.id),
+        before_values={"status": MembershipStatus.FROZEN.value, "end_date": before_end_date},
+        after_values={
+            "status": MembershipStatus.ACTIVE.value,
+            "end_date": membership.end_date.isoformat(),
+            "frozen_days": frozen_days,
+        },
+        reason="Membership unfrozen",
+    )
 
     db.commit()
     db.refresh(membership)
@@ -524,6 +562,18 @@ def renew_membership(
         if member:
             member.status = MemberStatus.ACTIVE
 
+        log_audit_event(
+            db=db,
+            tenant_id=tenant_id,
+            user_id=current_user.id,
+            action="MEMBERSHIP_RENEW",
+            resource_type="MEMBERSHIP",
+            resource_id=str(new_membership.id),
+            before_values={"previous_membership_id": str(membership.id), "previous_end_date": membership.end_date.isoformat()},
+            after_values={"new_membership_id": str(new_membership.id), "plan_id": str(plan.id), "start_date": new_membership.start_date.isoformat(), "end_date": new_membership.end_date.isoformat()},
+            reason="Membership renewed",
+        )
+
         db.commit()
         db.refresh(new_membership)
     except Exception:
@@ -595,6 +645,19 @@ def upgrade_membership(
             notes=payload.notes or f"Upgraded/changed from plan: {membership.membership_plan_id}",
         )
         db.add(new_membership)
+
+        log_audit_event(
+            db=db,
+            tenant_id=tenant_id,
+            user_id=current_user.id,
+            action="MEMBERSHIP_UPGRADE",
+            resource_type="MEMBERSHIP",
+            resource_id=str(new_membership.id),
+            before_values={"previous_membership_id": str(membership.id), "previous_plan_id": str(membership.membership_plan_id)},
+            after_values={"new_membership_id": str(new_membership.id), "new_plan_id": str(new_plan.id)},
+            reason="Membership upgraded",
+        )
+
         db.commit()
         db.refresh(new_membership)
     except Exception:

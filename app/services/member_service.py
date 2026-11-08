@@ -10,6 +10,7 @@ from app.models.member import Member, MemberStatus
 from app.models.user import User
 from app.schemas.members import MemberCreateRequest, MemberUpdateRequest
 from app.services.membership_service import sync_expired_memberships
+from app.services.audit_service import log_audit_event
 
 
 def create_member(
@@ -144,6 +145,7 @@ def update_member(
     member: Member,
     payload: MemberUpdateRequest,
     tenant_id: uuid.UUID,
+    current_user: Optional[User] = None,
 ) -> Member:
     """
     Update allowed fields of a member record.
@@ -185,9 +187,26 @@ def update_member(
                 detail=f"Email '{update_data['email']}' is already registered to another member",
             )
 
+    before_values = {k: getattr(member, k) for k in update_data.keys()}
+
     try:
         for field, value in update_data.items():
             setattr(member, field, value)
+
+        after_values = {k: getattr(member, k) for k in update_data.keys()}
+
+        log_audit_event(
+            db=db,
+            tenant_id=tenant_id,
+            user_id=current_user.id if current_user else None,
+            action="MEMBER_UPDATE",
+            resource_type="MEMBER",
+            resource_id=str(member.id),
+            before_values=before_values,
+            after_values=after_values,
+            reason="Member profile updated",
+        )
+
         db.commit()
         db.refresh(member)
         return member
@@ -202,11 +221,25 @@ def update_member(
         raise
 
 
-def delete_member(db: Session, member: Member) -> None:
+def delete_member(db: Session, member: Member, current_user: Optional[User] = None) -> None:
     """
     Soft-delete a member by setting status to INACTIVE.
     Hard delete is not performed to preserve membership history integrity.
     """
+    before_status = member.status.value
     member.status = MemberStatus.INACTIVE
+
+    log_audit_event(
+        db=db,
+        tenant_id=member.tenant_id,
+        user_id=current_user.id if current_user else None,
+        action="MEMBER_STATUS_CHANGE",
+        resource_type="MEMBER",
+        resource_id=str(member.id),
+        before_values={"status": before_status},
+        after_values={"status": MemberStatus.INACTIVE.value},
+        reason="Member deactivated",
+    )
+
     db.commit()
 
