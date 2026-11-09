@@ -40,6 +40,7 @@ import { getTodayDateString, sortMembersByNumericId } from "@/lib/mock-data";
 import {
   setActiveSession,
   DEMO_ACCOUNTS,
+  isDemoModeEnabled,
   api,
 } from "@/lib/api-client";
 import { useSessionStore } from "@/lib/use-session-store";
@@ -198,32 +199,57 @@ export function ReportsView() {
   // Recharts Chart Data
   const revenueTrendData = useMemo(() => {
     if (timeRange === "today") {
-      return [
-        { time: "08:00 AM", amount: 15000 },
-        { time: "11:00 AM", amount: 8500 },
-        { time: "02:00 PM", amount: 12000 },
-        { time: "05:00 PM", amount: 22000 },
-        { time: "08:00 PM", amount: totalRevenue > 0 ? totalRevenue : 18000 },
+      const hourlyIntervals = [
+        { label: "06:00 AM", startH: 0, endH: 8 },
+        { label: "09:00 AM", startH: 9, endH: 11 },
+        { label: "12:00 PM", startH: 12, endH: 14 },
+        { label: "03:00 PM", startH: 15, endH: 17 },
+        { label: "06:00 PM", startH: 18, endH: 20 },
+        { label: "09:00 PM", startH: 21, endH: 23 },
       ];
+      return hourlyIntervals.map((interval) => {
+        const sum = filteredPayments
+          .filter((p) => {
+            const dateStr = p.paymentDate || (p as unknown as { date: string }).date || "";
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return false;
+            const h = d.getHours();
+            return h >= interval.startH && h <= interval.endH;
+          })
+          .reduce((acc, p) => acc + (p.amount || 0), 0);
+        return { time: interval.label, amount: sum };
+      });
     }
     if (timeRange === "7days") {
-      return [
-        { time: "Day 1", amount: 12500 },
-        { time: "Day 2", amount: 18000 },
-        { time: "Day 3", amount: 14200 },
-        { time: "Day 4", amount: 26000 },
-        { time: "Day 5", amount: 31000 },
-        { time: "Day 6", amount: 39500 },
-        { time: "Day 7", amount: totalRevenue > 0 ? totalRevenue : 28000 },
-      ];
+      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      return days.map((dayName, idx) => {
+        const sum = filteredPayments
+          .filter((p) => {
+            const dateStr = p.paymentDate || (p as unknown as { date: string }).date || "";
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return false;
+            const dayIdx = (d.getDay() + 6) % 7;
+            return dayIdx === idx;
+          })
+          .reduce((acc, p) => acc + (p.amount || 0), 0);
+        return { time: dayName, amount: sum };
+      });
     }
-    return [
-      { time: "Week 1", amount: 55000 },
-      { time: "Week 2", amount: 72000 },
-      { time: "Week 3", amount: 89000 },
-      { time: "Week 4", amount: totalRevenue > 0 ? totalRevenue : 110000 },
-    ];
-  }, [timeRange, totalRevenue]);
+    const weeks = ["Week 1", "Week 2", "Week 3", "Week 4"];
+    return weeks.map((wName, idx) => {
+      const sum = filteredPayments
+        .filter((p) => {
+          const dateStr = p.paymentDate || (p as unknown as { date: string }).date || "";
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return false;
+          const dayOfMonth = d.getDate();
+          const weekIdx = Math.min(3, Math.floor((dayOfMonth - 1) / 7));
+          return weekIdx === idx;
+        })
+        .reduce((acc, p) => acc + (p.amount || 0), 0);
+      return { time: wName, amount: sum };
+    });
+  }, [timeRange, filteredPayments]);
 
   const membershipPieData = [
     { name: "Active", value: activeMembers, color: "#10b981" },
@@ -236,13 +262,37 @@ export function ReportsView() {
     return { name: plan.name, members: count, price: plan.price };
   });
 
-  const attendanceBarData = [
-    { slot: "06-09 AM (Morning)", checkIns: 42, occupancy: 85 },
-    { slot: "09-12 PM (Late Morning)", checkIns: 22, occupancy: 44 },
-    { slot: "12-05 PM (Afternoon)", checkIns: 14, occupancy: 28 },
-    { slot: "05-09 PM (Evening)", checkIns: 58, occupancy: 96 },
-    { slot: "09-10 PM (Night)", checkIns: 12, occupancy: 24 },
-  ];
+  const parseCheckInHour = (timeStr?: string): number | null => {
+    if (!timeStr) return null;
+    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+    if (!match) return null;
+    let hour = parseInt(match[1], 10);
+    const meridiem = match[3]?.toUpperCase();
+    if (meridiem === "PM" && hour < 12) hour += 12;
+    if (meridiem === "AM" && hour === 12) hour = 0;
+    return hour;
+  };
+
+  const attendanceBarData = useMemo(() => {
+    const slots = [
+      { slot: "06-09 AM (Morning)", minH: 6, maxH: 8 },
+      { slot: "09-12 PM (Late Morning)", minH: 9, maxH: 11 },
+      { slot: "12-05 PM (Afternoon)", minH: 12, maxH: 16 },
+      { slot: "05-09 PM (Evening)", minH: 17, maxH: 20 },
+      { slot: "09-10 PM (Night)", minH: 21, maxH: 22 },
+    ];
+    const totalActive = Math.max(1, activeMembers);
+
+    return slots.map((s) => {
+      const matching = filteredAttendance.filter((a) => {
+        const h = parseCheckInHour(a.checkInTime);
+        return h !== null && h >= s.minH && h <= s.maxH;
+      });
+      const checkIns = matching.length;
+      const occupancy = Math.min(100, Math.round((checkIns / totalActive) * 100));
+      return { slot: s.slot, checkIns, occupancy };
+    });
+  }, [filteredAttendance, activeMembers]);
 
   // CSV Export Generators
   const downloadCsv = (filename: string, content: string) => {
@@ -407,30 +457,29 @@ export function ReportsView() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
             <Lock size={28} />
           </div>
-          <h2 className="mt-4 text-xl font-bold text-foreground">Access Restricted — Front Desk Demo Role</h2>
+          <h2 className="mt-4 text-xl font-bold text-foreground">Access Restricted</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Front Desk staff have permissions for Member Registration, Membership Assignment, Payment Collection, Receipts, and Attendance Check-in only.
           </p>
           <p className="mt-2 text-xs text-muted-foreground/80">
             Business performance analytics, revenue insights, and CSV exports are restricted to Gym Owners and Managers.
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <button
-              onClick={() => setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"])}
-              className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e] transition"
-            >
-              Switch to Owner (Vikram)
-            </button>
-            <button
-              onClick={() => setActiveSession(DEMO_ACCOUNTS["manager@gymcore.com"])}
-              className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition"
-            >
-              Switch to Manager (Rajesh)
-            </button>
-          </div>
-          <p className="mt-6 text-[11px] text-muted-foreground/70">
-            Frontend demo simulation. Actual permissions will be enforced by Riva&apos;s FastAPI backend.
-          </p>
+          {isDemoModeEnabled() && (
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={() => setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"])}
+                className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e] transition"
+              >
+                Switch to Owner (Vikram)
+              </button>
+              <button
+                onClick={() => setActiveSession(DEMO_ACCOUNTS["manager@gymcore.com"])}
+                className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition"
+              >
+                Switch to Manager (Rajesh)
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

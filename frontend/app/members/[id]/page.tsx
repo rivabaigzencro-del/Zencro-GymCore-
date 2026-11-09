@@ -2,15 +2,10 @@ import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { MemberProfileView } from "@/components/members/member-profile-view";
-import { INITIAL_MEMBERS } from "@/lib/mock-data";
 
 type MemberProfilePageProps = {
   params: Promise<{ id: string }>;
 };
-
-export function generateStaticParams() {
-  return INITIAL_MEMBERS.map((m) => ({ id: m.id }));
-}
 
 async function MemberProfileContent({ params }: MemberProfilePageProps) {
   const { id } = await params;

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useSessionStore } from "@/lib/use-session-store";
+import { useMounted } from "@/lib/use-mounted";
 
 const navigation = [
   { name: "Overview", icon: LayoutDashboard, href: "/", frontDeskAllowed: true },
@@ -46,6 +47,7 @@ function SidebarContent() {
   const isSettingsActive = pathname.startsWith("/settings");
 
   const session = useSessionStore();
+  const mounted = useMounted();
 
   const isFrontDesk = session?.role === "Front Desk";
 
@@ -74,7 +76,7 @@ function SidebarContent() {
             Main Menu
           </span>
           <span className="rounded bg-[#C9A04F]/15 px-1.5 py-0.5 text-[9px] font-bold text-[#C9A04F]">
-            {session?.role || "Demo"}
+            {mounted && session?.role ? session.role : "Console"}
           </span>
         </div>
 
@@ -153,20 +155,15 @@ function SidebarContent() {
           )}
         </Link>
 
-        {/* Demo Role Info Card */}
+        {/* User Session Profile Card */}
         <div className="rounded-xl border border-border/60 bg-muted/20 p-2.5">
           <div className="flex items-center justify-between text-[11px]">
             <span className="font-semibold text-foreground truncate max-w-[120px]">
-              {session?.name || "Demo User"}
+              {mounted && (session?.name || session?.email) ? (session?.name || session?.email) : "Gym Staff"}
             </span>
-            <span className="text-[10px] font-bold text-[#C9A04F]">{session?.role}</span>
-          </div>
-          <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>FRONTEND MVP</span>
-            </div>
-            <span className="opacity-70">Day 7</span>
+            <span className="text-[10px] font-bold text-[#C9A04F]">
+              {mounted && session?.role ? session.role : "Staff"}
+            </span>
           </div>
         </div>
       </div>

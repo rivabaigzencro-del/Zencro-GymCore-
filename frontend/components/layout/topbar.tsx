@@ -108,7 +108,7 @@ function TopbarContent() {
   const [unreadNotifications, setUnreadNotifications] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const isDemo = isDemoModeEnabled();
+  const isDemo = mounted && isDemoModeEnabled();
 
   // Redirect to /login if unauthenticated and not in demo mode
   useEffect(() => {
@@ -117,7 +117,7 @@ function TopbarContent() {
     }
   }, [mounted, session, isDemo, pathname, router]);
 
-  const userInitials = session?.name
+  const userInitials = (mounted && session?.name)
     ? session.name
         .split(" ")
         .map((n) => n[0])
@@ -314,15 +314,19 @@ function TopbarContent() {
 
               <div className="hidden text-left sm:block">
                 <p className="text-xs font-semibold text-foreground leading-tight truncate max-w-[120px]">
-                  {session?.name || (isDemo ? "Demo User" : "Signed In")}
+                  {mounted && session?.name
+                    ? session.name
+                    : mounted && isDemo
+                    ? "Demo User"
+                    : "Signed In"}
                 </p>
 
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="text-[10px] font-semibold text-[#C9A04F] leading-tight">
-                    {session?.role || "Staff"}
+                    {mounted && session?.role ? session.role : "Staff"}
                   </span>
                   <span className="rounded bg-[#C9A04F]/20 px-1 py-0.2 text-[8px] font-bold text-[#C9A04F]">
-                    {isDemo ? "DEMO" : "LIVE"}
+                    {mounted && isDemo ? "DEMO" : "LIVE"}
                   </span>
                 </div>
               </div>

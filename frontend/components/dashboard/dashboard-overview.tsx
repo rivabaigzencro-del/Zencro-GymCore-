@@ -133,39 +133,56 @@ export function DashboardOverview() {
 
   const recentActivity = attendance.slice(0, 6);
 
-  // Revenue Chart Trends
-  const currentDayIndex = new Date().getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-  const currentDayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][currentDayIndex];
+  // Revenue & Activity Chart Calculations from Real Collections
+  const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const dailyChartData = daysOfWeek.map((dayName, idx) => {
+    const dayPayments = payments.filter((p) => {
+      if (p.status !== "Paid" && (p as unknown as { status: string }).status !== "Completed") return false;
+      const dateStr = p.paymentDate || (p as unknown as { date: string }).date || "";
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      const dayIdx = (d.getDay() + 6) % 7; // 0 = Mon ... 6 = Sun
+      return dayIdx === idx;
+    });
 
-  const baseDailyData = [
-    { name: "Mon", revenue: 14500, checkIns: 32 },
-    { name: "Tue", revenue: 18200, checkIns: 41 },
-    { name: "Wed", revenue: 12000, checkIns: 29 },
-    { name: "Thu", revenue: 24800, checkIns: 48 },
-    { name: "Fri", revenue: 31500, checkIns: 56 },
-    { name: "Sat", revenue: 42000, checkIns: 68 },
-    { name: "Sun", revenue: 28500, checkIns: 38 },
-  ];
+    const dayAttendance = attendance.filter((a) => {
+      const d = new Date(a.date || "");
+      if (isNaN(d.getTime())) return false;
+      const dayIdx = (d.getDay() + 6) % 7;
+      return dayIdx === idx;
+    });
 
-  const dailyChartData = baseDailyData.map((d) => {
-    if (d.name === currentDayName) {
-      return {
-        ...d,
-        revenue: todayCollection > 0 ? todayCollection : d.revenue,
-        checkIns: todayAttendance.length > 0 ? todayAttendance.length : d.checkIns,
-      };
-    }
-    return d;
+    return {
+      name: dayName,
+      revenue: dayPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
+      checkIns: dayAttendance.length,
+    };
   });
 
-  const monthlyChartData = [
-    { name: "Jun", revenue: 210000 },
-    { name: "Jul", revenue: 245000 },
-    { name: "Aug", revenue: 268000 },
-    { name: "Sep", revenue: 295000 },
-    { name: "Oct", revenue: 340000 },
-    { name: "Nov", revenue: 385000 },
-  ];
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const currentMonthIdx = now.getMonth();
+  const last6Months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), currentMonthIdx - 5 + i, 1);
+    return {
+      name: monthNames[d.getMonth()],
+      year: d.getFullYear(),
+      month: d.getMonth(),
+    };
+  });
+
+  const monthlyChartData = last6Months.map((m) => {
+    const monthPayments = payments.filter((p) => {
+      if (p.status !== "Paid" && (p as unknown as { status: string }).status !== "Completed") return false;
+      const dateStr = p.paymentDate || (p as unknown as { date: string }).date || "";
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return false;
+      return d.getFullYear() === m.year && d.getMonth() === m.month;
+    });
+    return {
+      name: m.name,
+      revenue: monthPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
+    };
+  });
 
   const activeChartData = chartView === "daily" ? dailyChartData : monthlyChartData;
 

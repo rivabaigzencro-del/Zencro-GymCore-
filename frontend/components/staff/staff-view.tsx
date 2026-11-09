@@ -39,6 +39,7 @@ import {
 import {
   setActiveSession,
   DEMO_ACCOUNTS,
+  isDemoModeEnabled,
 } from "@/lib/api-client";
 import { useSessionStore } from "@/lib/use-session-store";
 import { useStaffStore } from "@/lib/use-staff-store";
@@ -403,27 +404,29 @@ export function StaffView() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
             <Lock size={28} />
           </div>
-          <h2 className="mt-4 text-xl font-bold text-foreground">Access Restricted — Front Desk Demo Role</h2>
+          <h2 className="mt-4 text-xl font-bold text-foreground">Access Restricted</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Front Desk staff have permissions for Member Registration, Membership Assignment, Payment Collection, Receipts, and Attendance Check-in only.
           </p>
           <p className="mt-2 text-xs text-muted-foreground/80">
             Staff management, salary records, and employee rosters are restricted to Gym Owners and Managers.
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <button
-              onClick={() => setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"])}
-              className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e] transition"
-            >
-              Switch to Owner (Vikram)
-            </button>
-            <button
-              onClick={() => setActiveSession(DEMO_ACCOUNTS["manager@gymcore.com"])}
-              className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition"
-            >
-              Switch to Manager (Rajesh)
-            </button>
-          </div>
+          {isDemoModeEnabled() && (
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={() => setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"])}
+                className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e] transition"
+              >
+                Switch to Owner (Vikram)
+              </button>
+              <button
+                onClick={() => setActiveSession(DEMO_ACCOUNTS["manager@gymcore.com"])}
+                className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted transition"
+              >
+                Switch to Manager (Rajesh)
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1129,15 +1132,17 @@ export function StaffView() {
                   >
                     Close
                   </button>
-                  <button
-                    onClick={() => {
-                      setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"]);
-                      showNotification("Switched to Owner demo role with deletion privileges");
-                    }}
-                    className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e]"
-                  >
-                    Switch to Owner to Delete
-                  </button>
+                  {isDemoModeEnabled() && (
+                    <button
+                      onClick={() => {
+                        setActiveSession(DEMO_ACCOUNTS["owner@gymcore.com"]);
+                        showNotification("Switched to Owner demo role with deletion privileges");
+                      }}
+                      className="rounded-xl bg-[#C9A04F] px-4 py-2 text-xs font-bold text-black hover:bg-[#b68d3e]"
+                    >
+                      Switch to Owner to Delete
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (

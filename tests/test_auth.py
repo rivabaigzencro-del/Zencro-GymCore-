@@ -1,12 +1,13 @@
 import uuid
 from datetime import timedelta
+from unittest.mock import patch
 from fastapi import HTTPException
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.auth import enforce_tenant_isolation, get_current_user
-from app.core.security import create_access_token, hash_password
+from app.core.security import create_access_token, hash_password, verify_password
 from app.models.tenant import Tenant
 from app.models.user import User, UserRole
 
@@ -381,3 +382,339 @@ def test_auth_invalid_and_expired_tokens(client: TestClient, registered_gym):
     # 3. Malformed token string
     resp_malformed = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer not-a-jwt"})
     assert resp_malformed.status_code == 401
+
+
+# =====================================================================
+# 15 MANDATORY REGISTRATION & MULTI-TENANT ISOLATION ACCEPTANCE TESTS
+# =====================================================================
+
+def test_reg_01_successful_gym_registration(client: TestClient, unique_email: str):
+    """Requirement 1: Successful gym registration with valid payload returns 201 and JWT."""
+    payload = {
+        "gym_name": "Titanium Fitness Club",
+        "name": "Vikram Malhotra",
+        "email": unique_email,
+        "password": "SecurePassword123!",
+        "phone": "+919876543210",
+        "address": "45 Indiranagar, Bangalore",
+    }
+    response = client.post("/api/v1/auth/register", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert data["tenant"]["name"] == "Titanium Fitness Club"
+    assert data["tenant"]["timezone"] == "Asia/Kolkata"
+    assert data["tenant"]["currency"] == "INR"
+    assert data["user"]["email"] == unique_email.lower()
+
+
+def test_reg_02_successful_owner_creation(client: TestClient, db: Session, unique_email: str):
+    """Requirement 2: Successful owner user creation in database linked to tenant."""
+    payload = {
+        "gym_name": "Apex Gym",
+        "name": "Apex Owner",
+        "email": unique_email,
+        "password": "ApexPassword123!",
+        "phone": "+919811122233",
+    }
+    response = client.post("/api/v1/auth/register", json=payload)
+    assert response.status_code == 201
+    user_id = uuid.UUID(response.json()["user"]["id"])
+    tenant_id = uuid.UUID(response.json()["tenant"]["id"])
+
+    # Query DB directly to verify persistence
+    user = db.query(User).filter(User.id == user_id).first()
+    assert user is not None
+    assert user.tenant_id == tenant_id
+    assert user.name == "Apex Owner"
+    assert user.email == unique_email.lower()
+    assert user.is_active is True
+
+
+def test_reg_03_owner_role_assigned_automatically(client: TestClient, db: Session, unique_email: str):
+    """Requirement 3: Newly registered user is automatically assigned OWNER role."""
+    payload = {
+        "gym_name": "Autonomy Gym",
+        "name": "Auto Owner",
+        "email": unique_email,
+        "password": "AutoPassword123!",
+    }
+    response = client.post("/api/v1/auth/register", json=payload)
+    assert response.status_code == 201
+    assert response.json()["user"]["role"] == "OWNER"
+
+    user_id = uuid.UUID(response.json()["user"]["id"])
+    user = db.query(User).filter(User.id == user_id).first()
+    assert user.role == UserRole.OWNER
+
+
+def test_reg_04_password_stored_as_bcrypt_hash(client: TestClient, db: Session, unique_email: str):
+    """Requirement 4: Password is never stored in plaintext and is hashed with bcrypt."""
+    plaintext = "PlainTextPass123!"
+    payload = {
+        "gym_name": "Crypto Gym",
+        "name": "Crypto Owner",
+        "email": unique_email,
+        "password": plaintext,
+    }
+    response = client.post("/api/v1/auth/register", json=payload)
+    assert response.status_code == 201
+
+    user_id = uuid.UUID(response.json()["user"]["id"])
+    user = db.query(User).filter(User.id == user_id).first()
+    assert user.password_hash != plaintext
+    assert user.password_hash.startswith(("$2b$", "$2a$", "$2y$"))
+    assert verify_password(plaintext, user.password_hash) is True
+
+
+def test_reg_05_duplicate_email_rejection(client: TestClient, unique_email: str):
+    """Requirement 5: Duplicate email registration rejected with 400 Bad Request."""
+    payload = {
+        "gym_name": "Original Gym",
+        "name": "Original Owner",
+        "email": unique_email,
+        "password": "OriginalPassword123!",
+    }
+    r1 = client.post("/api/v1/auth/register", json=payload)
+    assert r1.status_code == 201
+
+    r2 = client.post("/api/v1/auth/register", json=payload)
+    assert r2.status_code == 400
+    assert "already registered" in r2.json()["detail"].lower()
+
+
+def test_reg_06_invalid_email_rejection(client: TestClient):
+    """Requirement 6: Invalid email format rejected with 422 Unprocessable Entity."""
+    invalid_emails = ["notanemail", "plainword", "@missingusername.com", "missingdot@com"]
+    for bad_email in invalid_emails:
+        payload = {
+            "gym_name": "Invalid Email Gym",
+            "name": "Bad Owner",
+            "email": bad_email,
+            "password": "ValidPassword123!",
+        }
+        res = client.post("/api/v1/auth/register", json=payload)
+        assert res.status_code == 422
+
+
+def test_reg_07_missing_required_fields_rejection(client: TestClient):
+    """Requirement 7: Missing required fields rejected with 422 Unprocessable Entity."""
+    # Missing gym_name
+    r1 = client.post("/api/v1/auth/register", json={
+        "name": "Owner", "email": "valid@example.com", "password": "Password123!"
+    })
+    assert r1.status_code == 422
+
+    # Missing name
+    r2 = client.post("/api/v1/auth/register", json={
+        "gym_name": "Gym", "email": "valid@example.com", "password": "Password123!"
+    })
+    assert r2.status_code == 422
+
+    # Missing email
+    r3 = client.post("/api/v1/auth/register", json={
+        "gym_name": "Gym", "name": "Owner", "password": "Password123!"
+    })
+    assert r3.status_code == 422
+
+    # Missing password
+    r4 = client.post("/api/v1/auth/register", json={
+        "gym_name": "Gym", "name": "Owner", "email": "valid@example.com"
+    })
+    assert r4.status_code == 422
+
+
+def test_reg_08_password_validation_lengths(client: TestClient):
+    """Requirement 8: Password validation enforcing minimum 8 chars and maximum 72 bytes."""
+    # Under 8 chars
+    r_short = client.post("/api/v1/auth/register", json={
+        "gym_name": "Short Gym",
+        "name": "Short Owner",
+        "email": f"short_{uuid.uuid4().hex[:6]}@example.com",
+        "password": "short",
+    })
+    assert r_short.status_code == 422
+
+    # Over 72 bytes
+    r_long = client.post("/api/v1/auth/register", json={
+        "gym_name": "Long Gym",
+        "name": "Long Owner",
+        "email": f"long_{uuid.uuid4().hex[:6]}@example.com",
+        "password": "X" * 73,
+    })
+    assert r_long.status_code == 422
+
+
+def test_reg_09_tenant_creation_rollback_on_user_creation_failure(client: TestClient, db: Session):
+    """Requirement 9: Tenant creation is rolled back if owner creation fails (atomic transaction)."""
+    gym_name = f"Rollback Gym {uuid.uuid4().hex[:6]}"
+    with patch("app.api.v1.endpoints.auth.hash_password", side_effect=RuntimeError("Simulated hash failure")):
+        with pytest.raises(RuntimeError):
+            client.post("/api/v1/auth/register", json={
+                "gym_name": gym_name,
+                "name": "Rollback Owner",
+                "email": f"rollback_{uuid.uuid4().hex[:6]}@example.com",
+                "password": "Password123!",
+            })
+    # Verify tenant was rolled back and is not persisted in DB
+    tenant = db.query(Tenant).filter(Tenant.name == gym_name).first()
+    assert tenant is None, "Tenant must be rolled back if owner creation fails"
+
+
+def test_reg_10_successful_login_after_registration(client: TestClient, unique_email: str):
+    """Requirement 10: Successful login after registration using registered credentials."""
+    password = "CorrectLoginPass123!"
+    reg_res = client.post("/api/v1/auth/register", json={
+        "gym_name": "Login Test Gym",
+        "name": "Login Owner",
+        "email": unique_email,
+        "password": password,
+    })
+    assert reg_res.status_code == 201
+
+    login_res = client.post("/api/v1/auth/login", json={
+        "email": unique_email,
+        "password": password,
+    })
+    assert login_res.status_code == 200
+    data = login_res.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert data["user"]["email"] == unique_email.lower()
+    assert data["user"]["role"] == "OWNER"
+
+
+def test_reg_11_jwt_authentication_after_login(client: TestClient, unique_email: str):
+    """Requirement 11: JWT authentication against /auth/me after login returns valid profile."""
+    password = "AuthMePassword123!"
+    reg_res = client.post("/api/v1/auth/register", json={
+        "gym_name": "Auth Me Gym",
+        "name": "Auth Me Owner",
+        "email": unique_email,
+        "password": password,
+    })
+    assert reg_res.status_code == 201
+
+    login_res = client.post("/api/v1/auth/login", json={
+        "email": unique_email,
+        "password": password,
+    })
+    token = login_res.json()["access_token"]
+
+    me_res = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_res.status_code == 200
+    profile = me_res.json()
+    assert profile["email"] == unique_email.lower()
+    assert profile["role"] == "OWNER"
+    assert profile["name"] == "Auth Me Owner"
+    assert "password_hash" not in profile
+
+
+def test_reg_12_new_tenant_zero_business_records(client: TestClient, unique_email: str):
+    """Requirement 12: Newly registered tenant starts with exactly zero members, payments, and attendance."""
+    reg_res = client.post("/api/v1/auth/register", json={
+        "gym_name": "Fresh Slate Gym",
+        "name": "Clean Owner",
+        "email": unique_email,
+        "password": "CleanPassword123!",
+    })
+    assert reg_res.status_code == 201
+    token = reg_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Query Member API
+    m_res = client.get("/api/v1/members", headers=headers)
+    assert m_res.status_code == 200
+    m_data = m_res.json()
+    items = m_data.get("items", m_data if isinstance(m_data, list) else [])
+    assert len(items) == 0
+
+    # Query Payment API
+    p_res = client.get("/api/v1/payments", headers=headers)
+    assert p_res.status_code == 200
+    p_data = p_res.json()
+    p_items = p_data.get("items", p_data if isinstance(p_data, list) else [])
+    assert len(p_items) == 0
+
+    # Query Attendance API
+    a_res = client.get("/api/v1/attendance", headers=headers)
+    assert a_res.status_code == 200
+    a_data = a_res.json()
+    a_items = a_data.get("items", a_data if isinstance(a_data, list) else [])
+    assert len(a_items) == 0
+
+
+def test_reg_13_two_gyms_have_different_tenant_ids(client: TestClient):
+    """Requirement 13: Multiple gyms registered receive strictly distinct tenant IDs."""
+    r1 = client.post("/api/v1/auth/register", json={
+        "gym_name": "Gym Alpha",
+        "name": "Owner Alpha",
+        "email": f"alpha_{uuid.uuid4().hex[:6]}@example.com",
+        "password": "PasswordAlpha123!",
+    })
+    r2 = client.post("/api/v1/auth/register", json={
+        "gym_name": "Gym Beta",
+        "name": "Owner Beta",
+        "email": f"beta_{uuid.uuid4().hex[:6]}@example.com",
+        "password": "PasswordBeta123!",
+    })
+    assert r1.status_code == 201
+    assert r2.status_code == 201
+
+    tenant_a = r1.json()["tenant"]["id"]
+    tenant_b = r2.json()["tenant"]["id"]
+    user_a = r1.json()["user"]["id"]
+    user_b = r2.json()["user"]["id"]
+
+    assert tenant_a != tenant_b
+    assert user_a != user_b
+
+
+def test_reg_14_cross_tenant_access_rejected(client: TestClient):
+    """Requirement 14: Cross-tenant access is rejected when tenant ID is spoofed."""
+    r1 = client.post("/api/v1/auth/register", json={
+        "gym_name": "Gym South",
+        "name": "Owner South",
+        "email": f"south_{uuid.uuid4().hex[:6]}@example.com",
+        "password": "SouthPassword123!",
+    })
+    r2 = client.post("/api/v1/auth/register", json={
+        "gym_name": "Gym North",
+        "name": "Owner North",
+        "email": f"north_{uuid.uuid4().hex[:6]}@example.com",
+        "password": "NorthPassword123!",
+    })
+    user_south_id = r1.json()["user"]["id"]
+    tenant_north_id = r2.json()["tenant"]["id"]
+
+    # Spoofed token: User South attempting to operate under Tenant North's ID
+    spoofed_token = create_access_token({
+        "sub": user_south_id,
+        "tenant_id": tenant_north_id,
+        "role": "OWNER",
+    })
+    resp = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {spoofed_token}"})
+    assert resp.status_code == 401
+    assert "tenant context mismatch" in resp.json()["detail"].lower()
+
+
+def test_reg_15_public_registration_cannot_create_manager_or_front_desk(client: TestClient, db: Session):
+    """Requirement 15: Public registration cannot create MANAGER or FRONT_DESK accounts."""
+    email = f"sneaky_{uuid.uuid4().hex[:6]}@example.com"
+    payload = {
+        "gym_name": "Sneaky Gym",
+        "name": "Sneaky User",
+        "email": email,
+        "password": "SneakyPassword123!",
+        "role": "MANAGER",
+    }
+    res = client.post("/api/v1/auth/register", json=payload)
+    if res.status_code == 201:
+        # Pydantic may ignore extra fields; verify the created user role is strictly OWNER
+        assert res.json()["user"]["role"] == "OWNER"
+        user = db.query(User).filter(User.email == email.lower()).first()
+        assert user.role == UserRole.OWNER
+    else:
+        # Or schema rejects extra field
+        assert res.status_code == 422

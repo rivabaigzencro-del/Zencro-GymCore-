@@ -9,6 +9,7 @@ global.localStorage = {
   clear: () => storage.clear(),
 };
 global.window = {};
+process.env.NEXT_PUBLIC_ENABLE_DEMO = "true";
 
 // Import utilities
 const {

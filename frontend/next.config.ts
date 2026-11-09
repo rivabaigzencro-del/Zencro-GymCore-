@@ -3,8 +3,8 @@ import path from "node:path";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  devIndicators: false,
   experimental: {
-    agentFeedback: true,
     cpus: 1,
   },
   turbopack: {

@@ -170,4 +170,11 @@
     background: #c9a04f;
     color: #111111;
   }
+
+  /* Ensure no Next.js floating dev indicator badge is rendered */
+  nextjs-portal,
+  #nextjs-dev-indicator,
+  [data-nextjs-dev-indicator] {
+    display: none !important;
+  }
 }
