@@ -1,23 +1,28 @@
-"use client";
+import { Suspense } from "react";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Topbar } from "@/components/layout/topbar";
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
-
-export default function HomePage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading) {
-      if (user) router.replace("/dashboard/members");
-      else router.replace("/login");
-    }
-  }, [user, loading, router]);
-
+export default function Home() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#080808]">
-      <div className="w-8 h-8 border-2 border-[#D4A84F] border-t-transparent rounded-full animate-spin" />
+    <div className="flex min-h-screen bg-background text-foreground">
+      <Sidebar />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar />
+
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <Suspense
+            fallback={
+              <div className="flex h-64 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#C9A04F] border-t-transparent" />
+              </div>
+            }
+          >
+            <DashboardOverview />
+          </Suspense>
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,24 +1,43 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import type { ReactNode } from "react";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
-import { AuthProvider } from "@/lib/auth-context";
 
-const geist = Geist({ subsets: ["latin"] });
+// System font variable fallback to ensure reliable offline builds
+const geistSans = {
+  variable: "--font-geist-sans",
+};
+
+const geistMono = {
+  variable: "--font-geist-mono",
+};
 
 export const metadata: Metadata = {
-  title: "GymCore — Gym Management",
-  description: "Professional gym management platform",
+  title: "GYMCORE | Gym Management",
+  description: "Stronger Business. Healthier Community.",
 };
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${geist.className} bg-[#080808] text-white antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col font-sans">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
