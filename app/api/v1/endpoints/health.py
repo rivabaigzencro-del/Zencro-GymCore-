@@ -1,10 +1,9 @@
 from typing import Optional
-from fastapi import APIRouter, status, Depends, Response
+from fastapi import APIRouter, status, Response
 from pydantic import BaseModel
-from sqlalchemy import text
-from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import check_database_connection, engine
+import app.main as app_main
 
 router = APIRouter()
 
@@ -16,6 +15,7 @@ class HealthCheckResponse(BaseModel):
     version: str
     environment: str
     database: Optional[str] = None
+    detail: Optional[str] = None
 
 
 @router.get(
@@ -25,16 +25,14 @@ class HealthCheckResponse(BaseModel):
     summary="Health Check",
     description="Returns the service health status and non-destructive database connectivity verification.",
 )
-async def health_check(response: Response, db: Session = Depends(get_db)) -> HealthCheckResponse:
+async def health_check(response: Response) -> HealthCheckResponse:
     """Check service and database availability non-destructively."""
-    database_status = "healthy"
-    try:
-        db.execute(text("SELECT 1"))
-    except Exception:
-        database_status = "unavailable"
+    current_engine = getattr(app_main, "engine", engine)
+    is_healthy, detail = check_database_connection(current_engine)
+    database_status = "healthy" if is_healthy else "unavailable"
+    overall_status = "healthy" if is_healthy else "unhealthy"
 
-    overall_status = "healthy" if database_status == "healthy" else "unhealthy"
-    if overall_status != "healthy":
+    if not is_healthy:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     return HealthCheckResponse(
@@ -43,4 +41,5 @@ async def health_check(response: Response, db: Session = Depends(get_db)) -> Hea
         version=settings.VERSION,
         environment=settings.ENV,
         database=database_status,
+        detail=detail,
     )

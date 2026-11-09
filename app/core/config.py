@@ -50,10 +50,18 @@ class Settings(BaseSettings):
     @classmethod
     def assemble_database_url(cls, v: str) -> str:
         if isinstance(v, str):
+            v = v.strip().strip("'\"").strip()
+            # Normalize dialect prefix for SQLAlchemy with psycopg2
             if v.startswith("postgres://"):
-                return v.replace("postgres://", "postgresql+psycopg2://", 1)
+                v = v.replace("postgres://", "postgresql+psycopg2://", 1)
             elif v.startswith("postgresql://") and not v.startswith("postgresql+"):
-                return v.replace("postgresql://", "postgresql+psycopg2://", 1)
+                v = v.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+            # Auto-enforce sslmode=require on remote PostgreSQL hosts (e.g. Supabase pooler)
+            if "postgresql" in v and not any(local_host in v.lower() for local_host in ["localhost", "127.0.0.1", "test.db", ":memory:"]):
+                if "sslmode" not in v.lower():
+                    separator = "&" if "?" in v else "?"
+                    v = f"{v}{separator}sslmode=require"
         return v
 
     # Security & JWT Configuration (Authentication placeholder)

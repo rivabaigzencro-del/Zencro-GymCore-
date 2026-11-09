@@ -769,3 +769,60 @@ def test_cors_unauthorized_origin_rejected(client: TestClient):
     )
     # When origin is rejected by CORSMiddleware, access-control-allow-origin is omitted
     assert response.headers.get("access-control-allow-origin") is None
+
+
+# =====================================================================
+# DATABASE CONNECTIVITY & PRODUCTION HEALTH DIAGNOSTICS
+# =====================================================================
+
+def test_health_endpoints_healthy(client: TestClient):
+    """Verify that /api/v1/health and /health report healthy when DB is reachable."""
+    resp1 = client.get("/api/v1/health")
+    assert resp1.status_code == 200
+    data1 = resp1.json()
+    assert data1["status"] == "healthy"
+    assert data1["database"] == "healthy"
+    assert data1["project"] == "GymCore API"
+
+    resp2 = client.get("/health")
+    assert resp2.status_code == 200
+    data2 = resp2.json()
+    assert data2["status"] == "healthy"
+    assert data2["database"] == "healthy"
+
+
+def test_database_diagnostic_url_masking():
+    """Verify that get_safe_database_url never exposes passwords or secrets."""
+    from app.core.database import get_safe_database_url
+    safe_url = get_safe_database_url()
+    assert ":***@" in safe_url or "sqlite" in safe_url
+    # Ensure sensitive raw password string is never exposed
+    assert "qea_7" not in safe_url
+    assert "xMep" not in safe_url
+
+
+def test_database_diagnostic_catches_localhost_in_production(monkeypatch):
+    """Verify that localhost in production is caught with clear diagnostic message."""
+    from app.core.config import settings
+    from app.core.database import check_database_connection
+    from sqlalchemy import create_engine
+
+    monkeypatch.setattr(settings, "ENV", "production")
+    local_engine = create_engine("postgresql+psycopg2://postgres:pass@localhost:5432/gymcore_db")
+
+    is_healthy, detail = check_database_connection(local_engine)
+    assert is_healthy is False
+    assert "Render Dashboard" in detail
+    assert "defaulted to localhost" in detail
+
+
+def test_database_diagnostic_catches_direct_supabase_ipv6():
+    """Verify that direct Supabase hostname is identified as needing the pooler."""
+    from app.core.database import check_database_connection
+    from sqlalchemy import create_engine
+
+    direct_engine = create_engine("postgresql+psycopg2://postgres:pass@db.kctentnramjfmvsrieee.supabase.co:5432/postgres")
+    is_healthy, detail = check_database_connection(direct_engine)
+    assert is_healthy is False
+    assert "pooler.supabase.com" in detail
+    assert "IPv6" in detail

@@ -2,7 +2,7 @@ from fastapi import FastAPI, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import engine, check_database_connection
 from app.api.v1.api import api_router
 
 
@@ -50,24 +50,25 @@ def create_application() -> FastAPI:
         summary="Service Health Check",
     )
     async def top_level_health(response: Response):
-        db_status = "healthy"
-        try:
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-        except Exception:
-            db_status = "unavailable"
+        import app.main as app_main
+        current_engine = getattr(app_main, "engine", engine)
+        is_healthy, detail = check_database_connection(current_engine)
+        db_status = "healthy" if is_healthy else "unavailable"
+        overall_status = "healthy" if is_healthy else "unhealthy"
 
-        overall_status = "healthy" if db_status == "healthy" else "unhealthy"
-        if overall_status != "healthy":
+        if not is_healthy:
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
-        return {
+        payload = {
             "status": overall_status,
             "project": settings.PROJECT_NAME,
             "version": settings.VERSION,
             "environment": settings.ENV,
             "database": db_status,
         }
+        if detail:
+            payload["detail"] = detail
+        return payload
 
     # Mount API v1 router
     application.include_router(api_router, prefix=settings.API_V1_STR)
