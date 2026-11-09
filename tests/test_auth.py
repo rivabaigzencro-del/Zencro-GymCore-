@@ -718,3 +718,54 @@ def test_reg_15_public_registration_cannot_create_manager_or_front_desk(client: 
     else:
         # Or schema rejects extra field
         assert res.status_code == 422
+
+
+# =====================================================================
+# CORS PRODUCTION & LOCALHOST VERIFICATION TESTS
+# =====================================================================
+
+def test_cors_vercel_production_origin_allowed(client: TestClient):
+    """Verify that production Vercel frontend origin receives valid CORS headers."""
+    vercel_origin = "https://zencro-gym-core.vercel.app"
+    response = client.options(
+        "/api/v1/auth/login",
+        headers={
+            "Origin": vercel_origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == vercel_origin
+    assert response.headers.get("access-control-allow-credentials") == "true"
+
+
+def test_cors_localhost_allowed(client: TestClient):
+    """Verify that local development origins remain permitted for development."""
+    local_origin = "http://localhost:3000"
+    response = client.options(
+        "/api/v1/auth/login",
+        headers={
+            "Origin": local_origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == local_origin
+    assert response.headers.get("access-control-allow-credentials") == "true"
+
+
+def test_cors_unauthorized_origin_rejected(client: TestClient):
+    """Verify that unauthorized origins do not receive CORS authorization headers."""
+    bad_origin = "https://unauthorized-attacker.com"
+    response = client.options(
+        "/api/v1/auth/login",
+        headers={
+            "Origin": bad_origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    # When origin is rejected by CORSMiddleware, access-control-allow-origin is omitted
+    assert response.headers.get("access-control-allow-origin") is None

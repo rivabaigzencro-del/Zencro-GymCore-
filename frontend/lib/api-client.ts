@@ -12,10 +12,17 @@ export interface ApiClientConfig {
   timeoutMs: number;
 }
 
+const DEFAULT_API_URL = "http://localhost:8000/api/v1";
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
+
 export const API_CONFIG: ApiClientConfig = {
-  baseUrl: (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) || "http://localhost:8000/api/v1",
+  baseUrl: rawApiUrl.replace(/\/+$/, ""),
   timeoutMs: 15000,
 };
+
+export function getApiBaseUrl(): string {
+  return API_CONFIG.baseUrl;
+}
 
 const TOKEN_STORAGE_KEY = "gymcore_auth_token_jwt";
 const REFRESH_TOKEN_STORAGE_KEY = "gymcore_refresh_token_jwt";
@@ -88,10 +95,10 @@ export const DEMO_ACCOUNTS: Record<string, UserSession & { password: string; tit
 
 export function isDemoModeEnabled(): boolean {
   if (typeof window === "undefined") {
-    return process.env?.NEXT_PUBLIC_ENABLE_DEMO === "true";
+    return process.env.NEXT_PUBLIC_ENABLE_DEMO === "true";
   }
   return (
-    process.env?.NEXT_PUBLIC_ENABLE_DEMO === "true" ||
+    process.env.NEXT_PUBLIC_ENABLE_DEMO === "true" ||
     localStorage.getItem(DEMO_MODE_STORAGE_KEY) === "true"
   );
 }

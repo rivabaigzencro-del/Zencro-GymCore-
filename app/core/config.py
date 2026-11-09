@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     BACKEND_CORS_ORIGINS: List[str] = [
+        "https://zencro-gym-core.vercel.app",
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:8000",
@@ -32,12 +33,14 @@ class Settings(BaseSettings):
             v = v.strip()
             if v.startswith("[") and v.endswith("]"):
                 try:
-                    return json.loads(v)
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [str(origin).strip().rstrip("/") for origin in parsed if str(origin).strip()]
                 except Exception:
                     pass
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
+            return [origin.strip().rstrip("/") for origin in v.split(",") if origin.strip()]
         elif isinstance(v, list):
-            return v
+            return [str(origin).strip().rstrip("/") for origin in v if str(origin).strip()]
         raise ValueError("Invalid format for BACKEND_CORS_ORIGINS")
 
     # Database Configuration (PostgreSQL / Supabase)

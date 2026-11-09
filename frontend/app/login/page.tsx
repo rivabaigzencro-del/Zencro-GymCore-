@@ -33,6 +33,7 @@ import {
   setDemoModeEnabled,
   normalizeRole,
   api,
+  API_CONFIG,
   type UserRole,
   type UserSession,
 } from "@/lib/api-client";
@@ -671,7 +672,7 @@ export default function LoginPage() {
           <div className="mt-5 rounded-xl border border-border/60 bg-muted/30 p-3 text-[11px] text-muted-foreground leading-relaxed flex items-start gap-2">
             <Server size={14} className="shrink-0 text-[#C9A04F] mt-0.5" />
             <span>
-              Connected to FastAPI backend at <code>http://localhost:8000/api/v1</code>. JWT authentication, tenant isolation & RBAC are enforced on every request.
+              Connected to FastAPI backend at <code>{API_CONFIG.baseUrl}</code>. JWT authentication, tenant isolation & RBAC are enforced on every request.
             </span>
           </div>
         </div>
